@@ -1,6 +1,6 @@
 use std::{collections::VecDeque};
 
-use crate::gameboy::cpu::{Flag, disassembler::disassembler_table::{ConditionCode, Register, RegisterPair1}};
+use crate::gameboy::cpu::{Flag, disassembler::disassembler_table::{CBOp, ConditionCode, Register, RegisterPair1, RegisterPair2}};
 
 use self::disassembler_table::ArithmeticOp;
 
@@ -43,6 +43,7 @@ pub(super) fn disassemble(opcode: u8) -> Instruction {
         4..=u8::MAX => panic!("Unhandled opcode: {:#04X}", opcode)
     };
 
+    // TODO: ARE WE ALREADY SIMULATING WAITING 4T IN THE CPU MAIN LOOP???
     let fake_opcode_fetch = InstructionStep::Standard(Box::new(|_cpu| { }));
     instruction.steps.push_front(fake_opcode_fetch); // fake step for fetching the opcode
     instruction 
@@ -430,7 +431,7 @@ fn dissassemble_x_0(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
 
             Instruction {
                 opcode_val: opcode,
-                human_readable: format!("LD {}", reg.to_string()),
+                human_readable: format!("LD {}, u8", reg.to_string()),
                 length: if matches!(reg, Register::HLMem) { 12 } else { 8 },
                 steps
             }
@@ -498,6 +499,47 @@ fn dissassemble_x_0(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
                     }));
                     steps.push_back(instruction_step);
                     String::from("RRA")
+                }
+
+                4 => {
+                    let instruction_step = InstructionStep::Instant(Box::new(|cpu| {
+                        // https://forums.nesdev.com/viewtopic.php?t=15944
+                        if cpu.is_flag_set(Flag::N) {
+                            if cpu.is_flag_set(Flag::C) {
+                                cpu.a = cpu.a.wrapping_sub(0x60);
+                            }
+                            
+                            if cpu.is_flag_set(Flag::H) {
+                                cpu.a = cpu.a.wrapping_sub(0x6);
+                            }
+                        } else {
+                            if cpu.is_flag_set(Flag::C) || cpu.a > 0x99 {
+                                cpu.a = cpu.a.wrapping_add(0x60);
+                                cpu.set_flag(Flag::C);
+                            }
+
+                            if cpu.is_flag_set(Flag::H) || (cpu.a & 0xF) > 0x09 {
+                                cpu.a = cpu.a.wrapping_add(0x6);
+                            }
+                        }
+
+                        cpu.handle_zero_flag(cpu.a);
+                        cpu.clear_flag(Flag::H);
+                    }));
+
+                    steps.push_back(instruction_step);
+                    String::from("DAA")
+                }
+
+                5 => {
+                    let instruction_step = InstructionStep::Instant(Box::new(|cpu| {
+                        cpu.a = !cpu.a;
+                        cpu.set_flag(Flag::N);
+                        cpu.set_flag(Flag::H);
+                    }));
+
+                    steps.push_back(instruction_step);
+                    String::from("CPL")
                 }
 
                 _ => panic!("Unhandled opcode: {:#04X}", opcode)
@@ -621,7 +663,7 @@ fn dissassemble_x_2(y: u8, z: u8, _p: u8, _q: u8, opcode: u8) -> Instruction {
     }
 }
 
-fn dissassemble_x_3(y: u8, z: u8, _p: u8, _q: u8, opcode: u8) -> Instruction {
+fn dissassemble_x_3(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
     let mut steps: VecDeque<InstructionStep> = VecDeque::new();
 
     match z {
@@ -711,6 +753,89 @@ fn dissassemble_x_3(y: u8, z: u8, _p: u8, _q: u8, opcode: u8) -> Instruction {
             }
         }
 
+        1 => {
+            match q {
+                0 => {
+                    let reg_pair_2_val = RegisterPair2::from_u8(p);
+                    // blank instruction to fake 8t POP
+                    steps.push_back(InstructionStep::Standard(Box::new(|_cpu|{})));
+                    steps.push_back(InstructionStep::Standard(Box::new(move |cpu| {
+                        let val = cpu.read_word_from_stack();
+                        match reg_pair_2_val {
+                            RegisterPair2::BC => cpu.set_bc(val),
+                            RegisterPair2::DE => cpu.set_de(val),
+                            RegisterPair2::HL => cpu.set_hl(val),
+                            RegisterPair2::AF => { 
+                                cpu.set_af(val);
+                                cpu.f = cpu.f & 0xF0;
+                            },
+                        }
+                    })));
+
+                    Instruction {
+                        opcode_val: opcode,
+                        human_readable: format!("POP {}", reg_pair_2_val.to_string()),
+                        length: 1,
+                        steps
+                    }
+                }
+
+                1 => {
+                    match p {
+                        0 | 1 => {
+                            let set_interupt = p == 1;
+                            let set_interupt_str = if set_interupt { "I" } else { "" };
+                            steps.push_back(InstructionStep::Standard(Box::new(|_cpu|{})));
+                            steps.push_back(InstructionStep::Standard(Box::new(|cpu: &mut Cpu| {
+                                cpu.temp_val_16 = cpu.read_word_from_stack();
+                            })));
+                            steps.push_back(InstructionStep::Standard(Box::new(move |cpu: &mut Cpu| {
+                                cpu.pc = cpu.temp_val_16;
+                                if set_interupt { (*cpu.mmu).borrow_mut().interupts.enable_master(); }
+                            })));
+
+                            Instruction {
+                                opcode_val: opcode,
+                                human_readable: format!("RET{}", set_interupt_str),
+                                length: 1,
+                                steps
+                            }
+                        }
+
+                        2 => {
+                            steps.push_back(InstructionStep::Instant(Box::new(|cpu: &mut Cpu| {
+                                cpu.pc = cpu.hl();
+                            })));
+
+                            Instruction {
+                                opcode_val: opcode,
+                                human_readable: String::from("JP HL"),
+                                length: 1,
+                                steps
+                            }
+                        }
+
+                        3 => {
+                            steps.push_back(InstructionStep::Standard(Box::new(|cpu: &mut Cpu| {
+                                cpu.sp = cpu.hl();
+                            })));
+
+                            Instruction {
+                                opcode_val: opcode,
+                                human_readable: String::from("LD SP, HL"),
+                                length: 1,
+                                steps
+                            }
+                        }
+
+                        _ => panic!("Unhandled opcode: {:#04X}", opcode)
+                    }
+                }
+
+                _ => panic!("Unhandled opcode: {:#04X}", opcode)
+            }
+        }
+
         2 => {
             match y {
                 // JP CC, u16
@@ -734,6 +859,48 @@ fn dissassemble_x_3(y: u8, z: u8, _p: u8, _q: u8, opcode: u8) -> Instruction {
                         opcode_val: opcode,
                         human_readable: format!("JP {} u16", cond_code.to_string()),
                         length: 3,
+                        steps
+                    }
+                }
+
+                4 | 5 => {
+                    let is_operand = y == 5;
+                    let human_readable = if is_operand { "u16" } else { "0xFF00 + C" };
+                    if is_operand {
+                        push_fetch_operand16_closures(&mut steps);
+                    }
+
+                    let jump_step = InstructionStep::Standard(Box::new(move |cpu: &mut Cpu| {
+                        let addr = if is_operand { cpu.operand16 } else { 0xFF00 + (cpu.c as u16) };
+                        (*cpu.mmu).borrow_mut().write_byte(addr, cpu.a);
+                    }));
+                    steps.push_back(jump_step);
+
+                    Instruction {
+                        opcode_val: opcode,
+                        human_readable: format!("LD ({}), A", human_readable),
+                        length: if is_operand { 3 } else { 1 },
+                        steps
+                    }
+                }
+
+                6 | 7 => {
+                    let is_operand = y == 7;
+                    let human_readable = if is_operand { "u16" } else { "0xFF00 + C" };
+                    if is_operand {
+                        push_fetch_operand16_closures(&mut steps);
+                    }
+
+                    let jump_step = InstructionStep::Standard(Box::new(move |cpu: &mut Cpu| {
+                        let addr = if is_operand { cpu.operand16 } else { 0xFF00 + (cpu.c as u16) };
+                        cpu.a = (*cpu.mmu).borrow().read_byte(addr);
+                    }));
+                    steps.push_back(jump_step);
+
+                    Instruction {
+                        opcode_val: opcode,
+                        human_readable: format!("LD A, ({})", human_readable),
+                        length: if is_operand { 3 } else { 1 },
                         steps
                     }
                 }
@@ -791,6 +958,299 @@ fn dissassemble_x_3(y: u8, z: u8, _p: u8, _q: u8, opcode: u8) -> Instruction {
             }
         }
 
+        4 => {
+            match y {
+                // CALL CC u8
+                0 | 1 | 2 | 3 => {
+                    // 12t
+                    push_fetch_operand16_closures(&mut steps);
+                    
+                    // instant (branch)
+                    let condition_code = ConditionCode::from_u8(y);
+                    steps.push_back(InstructionStep::InstantConditional(Box::new(condition_code.generate_closure())));
+
+                    // 16t
+                    // fake blank step
+                    steps.push_back(InstructionStep::Standard(Box::new(|_cpu| { })));
+
+                    // 20t
+                    // push current pc to stack
+                    steps.push_back(InstructionStep::Standard(Box::new(|cpu: &mut Cpu| {
+                        cpu.write_word_to_stack(cpu.pc);
+                    })));
+
+                    // 24t
+                    // assign new pc
+                    steps.push_back(InstructionStep::Standard(Box::new(|cpu: &mut Cpu| {
+                        cpu.pc = cpu.operand16;
+                    })));
+
+                    Instruction {
+                        opcode_val: opcode,
+                        human_readable: format!("CALL {}, u16", condition_code.to_string()),
+                        length: 3,
+                        steps
+                    }
+                }
+
+                _ => panic!("Invalid y value!")
+            }
+        }
+
+        5 => {
+            match q {
+                // PUSH rp2[p] - 16t
+                0 => {
+                    let reg = RegisterPair2::from_u8(p);
+
+                    // 8 (blank)
+                    steps.push_back(InstructionStep::Standard(Box::new(|_cpu |{})));
+                    // 12 (blank)
+                    steps.push_back(InstructionStep::Standard(Box::new(|_cpu |{})));
+                    // 16
+                    steps.push_back(InstructionStep::Standard(Box::new(move |cpu: &mut Cpu | {
+                        let val = match reg {
+                            RegisterPair2::BC => cpu.bc(),
+                            RegisterPair2::DE => cpu.de(),
+                            RegisterPair2::HL => cpu.hl(),
+                            RegisterPair2::AF => cpu.af(),
+                        };
+                        cpu.write_word_to_stack(val);
+                    })));
+
+                    Instruction {
+                        opcode_val: opcode,
+                        human_readable: format!("PUSH {}", reg.to_string()),
+                        length: 1,
+                        steps
+                    }
+                }
+
+                1 => {
+                    match p {
+                        // CALL u16 - 24t
+                        0 => {
+                            // 12
+                            push_fetch_operand16_closures(&mut steps);
+                            // 16 (blank)
+                            steps.push_back(InstructionStep::Standard(Box::new(|_cpu |{})));
+                            // 20
+                            steps.push_back(InstructionStep::Standard(Box::new(|cpu: &mut Cpu| {
+                                cpu.write_word_to_stack(cpu.pc);
+                            })));
+                            // 24
+                            steps.push_back(InstructionStep::Standard(Box::new(|cpu: &mut Cpu| {
+                                cpu.pc = cpu.operand16;
+                            })));
+
+                            Instruction {
+                                opcode_val: opcode,
+                                human_readable: String::from("CALL u16"),
+                                length: 3,
+                                steps
+                            }
+                        }
+
+                        _ => panic!("Invalid state in the disassembler!")
+                    }
+                }
+
+                _ => panic!("Unhandled opcode: {:#04X}", opcode)
+            }
+        }
+
+        6 => {
+            push_fetch_operand8_closure(&mut steps);
+            let arithmetic_op = ArithmeticOp::from_u8(y);
+            
+            steps.push_back(InstructionStep::Standard(Box::new(move |cpu: &mut Cpu| {
+                match arithmetic_op {
+                    ArithmeticOp::ADD => cpu.a = cpu.add(cpu.a, cpu.operand8),
+                    ArithmeticOp::ADC => cpu.adc(cpu.operand8),
+                    ArithmeticOp::SUB => cpu.sub(cpu.operand8),
+                    ArithmeticOp::SBC => panic!("SBC Not Implemented!"),
+                    ArithmeticOp::AND => cpu.and(cpu.operand8),
+                    ArithmeticOp::XOR => cpu.xor(cpu.operand8),
+                    ArithmeticOp::OR => cpu.or(cpu.operand8),
+                    ArithmeticOp::CP => cpu.cp(cpu.operand8),
+                }
+            })));
+
+
+            Instruction {
+                opcode_val: opcode,
+                human_readable: format!("{}, u8", arithmetic_op.to_string()),
+                length: 2,
+                steps
+            }
+        }
+
+        // RST xxh - 16t
+        7 => {
+            let arg = y * 8;
+
+            // 8
+            let fake_step = InstructionStep::Standard(Box::new(|_cpu| { }));
+            steps.push_back(fake_step);
+
+            // 12
+            let write_pc_to_stack = InstructionStep::Standard(Box::new(|cpu: &mut Cpu| {
+                cpu.write_word_to_stack(cpu.pc);
+            }));
+            steps.push_back(write_pc_to_stack);
+
+            // 16
+            let jmp_step = InstructionStep::Standard(Box::new(move |cpu: &mut Cpu| {
+                cpu.pc = arg as u16;
+            }));
+            steps.push_back(jmp_step);
+
+            Instruction {
+                opcode_val: opcode,
+                human_readable: format!("RST {}h", arg),
+                length: 1,
+                steps
+            }
+        }
+
         _ => panic!("Unhandled opcode: {:#04X}", opcode)
+    }
+}
+
+pub(super) fn disassemble_cb_prefix_op(opcode: u8) -> Instruction {
+    let x = opcode >> 6;                // bits 6 - 7
+    let y = (opcode & 0b00111000) >> 3; // bits 5 - 3
+    let z = opcode & 0b00000111;        // bits 2 - 0
+
+    if x > 3 { panic!("Invalid x value for CB op!") }
+
+    let mut steps: VecDeque<InstructionStep> = VecDeque::new();
+    let register = Register::from_u8(z);
+
+    // fake instruction to simulate 4t for fetching CB Prefix op
+    let fake_opcode_prefix_fetch = InstructionStep::Standard(Box::new(|_cpu| { }));
+    steps.push_back(fake_opcode_prefix_fetch);
+
+    let fake_opcode_suffix_fetch = InstructionStep::Standard(Box::new(|_cpu| { }));
+    steps.push_back(fake_opcode_suffix_fetch);
+
+    if matches!(register, Register::HLMem) {
+        return disassemble_cb_prefix_op_hl(opcode, x, y, z, steps);
+    }
+
+    let operation = CBOp::from_u8(y);
+
+    steps.push_back(InstructionStep::Instant(Box::new(move |cpu| {
+        let arg = match register {
+            Register::B => cpu.b,
+            Register::C => cpu.c,
+            Register::D => cpu.d,
+            Register::E => cpu.e,
+            Register::H => cpu.h,
+            Register::L => cpu.l,
+            Register::A => cpu.a,
+            Register::HLMem => panic!("Invalid register: HL is handled in separate branch of this function!")
+        };
+
+        let result = match x {
+            0 => {
+                match operation {
+                    CBOp::RLC => cpu.rlc(arg),
+                    CBOp::RRC => cpu.rrc(arg),
+                    CBOp::RL => cpu.rl(arg),
+                    CBOp::RR => cpu.rr(arg),
+                    CBOp::SLA => cpu.sla(arg),
+                    CBOp::SRA => cpu.sra(arg),
+                    CBOp::SWAP => cpu.swap(arg),
+                    CBOp::SRL => cpu.srl(arg)
+                }
+            }
+
+            1 => {
+                cpu.bit(y, arg);
+                arg
+            }
+
+            2 => {
+                arg & !(1 << y)
+            }
+
+            3 => {
+                arg | (1 << y)
+            }
+
+            _ => panic!("Invalid x value for CB op!")
+        };
+
+        // assignment
+        match register {
+            Register::B => cpu.b = result,
+            Register::C => cpu.c = result,
+            Register::D => cpu.d = result,
+            Register::E => cpu.e = result,
+            Register::H => cpu.h = result,
+            Register::L => cpu.l = result,
+            Register::A => cpu.a = result,
+            Register::HLMem => panic!("Invalid register: HL is handled in separate branch of this function!")
+        };
+    })));
+    
+    Instruction {
+        opcode_val: opcode,
+        human_readable: String::from("CB prefix (TODO)"),
+        length: 2,
+        steps
+    }
+}
+
+fn disassemble_cb_prefix_op_hl(opcode: u8, x: u8, y: u8, z: u8, mut steps: VecDeque<InstructionStep>) -> Instruction {
+    let operation = CBOp::from_u8(y);
+    let register = Register::from_u8(z);
+
+    // 12t
+    steps.push_back(InstructionStep::Standard(Box::new(move |cpu: &mut Cpu| {
+        let arg = match register {
+            Register::HLMem => (*cpu.mmu).borrow().read_byte(cpu.hl()),
+            _ => panic!("Invalid CB register in the HL branch!")
+        };
+
+        cpu.temp_val8 = match x {
+            0 => {
+                match operation {
+                    CBOp::RLC => cpu.rlc(arg),
+                    CBOp::RRC => cpu.rrc(arg),
+                    CBOp::RL => cpu.rl(arg),
+                    CBOp::RR => cpu.rr(arg),
+                    CBOp::SLA => cpu.sla(arg),
+                    CBOp::SRA => cpu.sra(arg),
+                    CBOp::SWAP => cpu.swap(arg),
+                    CBOp::SRL => cpu.srl(arg)
+                }
+            }
+            1 => {
+                cpu.bit(y, arg);
+                arg
+            }
+            2 => arg & !(1 << y),
+            3 => arg | (1 << y),
+            
+            _ => panic!("Invalid x value for CB op!")
+        };
+    })));
+
+    if x != 1 {
+        steps.push_back(InstructionStep::Standard(Box::new(move |cpu: &mut Cpu| {
+            match register {
+                Register::HLMem => (*cpu.mmu).borrow_mut().write_byte(cpu.hl(), cpu.temp_val8),
+                _ => panic!("Invalid CB register in the HL branch!")
+            };
+        })));
+    }
+
+    Instruction {
+        opcode_val: opcode,
+        human_readable: String::from("CB prefix (TODO)"),
+        length: 2,
+        steps
     }
 }

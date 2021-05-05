@@ -10,8 +10,7 @@ pub struct Interupt {
     pub flags: u8
 }
 
-pub enum InteruptFlag {
-    None,
+pub enum InterruptFlag {
     VBlank = 0b00000001,
     Stat   = 0b00000010,
     Timer  = 0b00000100,
@@ -51,57 +50,62 @@ impl Interupt {
         self.master > 0
     }
 
-    pub fn get_interupt_state(&self) -> InteruptFlag {
+    pub fn get_interupt_state(&self) -> Option<InterruptFlag> {
         if self.enable > 0 && self.flags > 0 {
             let interupt: u8 = self.enable & self.flags & 0x1F;
 
-            if interupt & InteruptFlag::VBlank as u8 > 0 {
-                return InteruptFlag::VBlank;
+            if interupt & InterruptFlag::VBlank as u8 > 0 {
+                return Some(InterruptFlag::VBlank);
             }
 
-            if interupt & InteruptFlag::Stat as u8 > 0 {
-                return InteruptFlag::Stat;
+            if interupt & InterruptFlag::Stat as u8 > 0 {
+                return Some(InterruptFlag::Stat);
             }
 
-            if interupt & InteruptFlag::Timer as u8 > 0 {
-                return InteruptFlag::Timer;
+            if interupt & InterruptFlag::Timer as u8 > 0 {
+                return Some(InterruptFlag::Timer);
             }
 
-            if interupt & InteruptFlag::Serial as u8 > 0 {
-                return InteruptFlag::Serial;
+            if interupt & InterruptFlag::Serial as u8 > 0 {
+                return Some(InterruptFlag::Serial);
             }
 
-            if interupt & InteruptFlag::Joypad as u8 > 0 {
-                return InteruptFlag::Joypad;
+            if interupt & InterruptFlag::Joypad as u8 > 0 {
+                return Some(InterruptFlag::Joypad);
             }
         }
 
-        InteruptFlag::None
+        None
     }
 
-    pub fn clear_interupt(&mut self, flag: InteruptFlag) {
+    pub fn clear_interupt(&mut self, flag: InterruptFlag) {
         self.flags = self.flags & !(flag as u8);
     }
 
-    pub fn set_interupt(&mut self, flag: InteruptFlag) {
+    pub fn request_interupt(&mut self, flag: InterruptFlag) {
         self.flags = self.flags | flag as u8;
     }
 
-    pub fn tick(interupt: Interupt, cpu: &mut Cpu) {
-        if interupt.is_master_enabled() && !cpu.is_processing_instruction() {
-            match interupt.get_interupt_state() {
-                InteruptFlag::None => { }
+    pub fn handle(interrupt: &mut Interupt, cpu: &mut Cpu) {
+        if interrupt.is_master_enabled() && !cpu.is_processing_instruction() {
+            let interrupt_flag = match interrupt.get_interupt_state() {
+                Some(flag) => flag,
+                None => return
+            };
+            
+            let interrupt_addr: u16 = match interrupt_flag {
+                InterruptFlag::VBlank => 0x40,
+                InterruptFlag::Stat => 0x48,
+                InterruptFlag::Timer => 0x50,
+                InterruptFlag::Serial => 0x58,
+                InterruptFlag::Joypad => 0x60
+            };
 
-                InteruptFlag::VBlank => panic!("Vblank interrupt unimplemented!"),
+            interrupt.clear_interupt(interrupt_flag);
+            interrupt.disable_master();
 
-                InteruptFlag::Stat => panic!("Stat interrupt unimplemented!"),
-
-                InteruptFlag::Timer => panic!("Timer interrupt unimplemented!"),
-
-                InteruptFlag::Serial => panic!("Serial interrupt unimplemented!"),
-
-                InteruptFlag::Joypad => panic!("Joypad interrupt unimplemented!"),
-            }
+            let interrupt_instr = Self::create_interupt_instruction(interrupt_addr);
+            cpu.set_interrupt_instruction(interrupt_instr);
         }
     }
 

@@ -1,31 +1,48 @@
-use super::interupt::Interupt;
+use super::{input::Input, interupt::Interupt};
+
+const PALETTE: [u8; 4] = [
+    255, 192, 196, 0
+];
 
 pub struct Mmu {
     pub interupts: Interupt,
+    pub input: Input,
 
     rom_bank_0: [u8; 0x4000],
     rom_bank_1: [u8; 0x4000], // for now, just a static bank, but needs to be switchable?
 
     gpu_vram: [u8; 0x2000],
     ram_switchable: [u8; 0x2000],
+    cart_ram: [u8; 0x2000],
     working_ram: [u8; 0x2000],
 
-    io: [u8; 0x100],
-    zero_page: [u8; 0x80]
+    pub io: [u8; 0x100],
+    zero_page: [u8; 0x80],
+
+    pub tileset: [[[u8; 8]; 8]; 384],
+    pub bg_palette: [u8; 4]
 }
 
 impl Mmu {
     pub fn new() -> Self {
         let mut mmu = Self {
             interupts: Interupt::new(),
+            input: Input::new(),
 
             rom_bank_0: [0; 0x4000],
             rom_bank_1: [0; 0x4000],
             gpu_vram: [0; 0x2000],
             ram_switchable: [0; 0x2000],
+            cart_ram: [0; 0x2000],
             working_ram: [0; 0x2000],
             io: [0; 0x100],
             zero_page: [0; 0x80],
+
+            // ppu
+            tileset: [[[0; 8]; 8]; 384],
+            bg_palette: [
+                PALETTE[0], PALETTE[1], PALETTE[2], PALETTE[3]
+            ],
         };
 
         // set up zero page mem
@@ -49,7 +66,36 @@ impl Mmu {
         mmu.write_byte(0xFF48, 0xFF);
         mmu.write_byte(0xFF49, 0xFF);
 
+        // mmu.write_byte(0xFF00, 0xFF);
+        // mmu.write_byte(0xFF80, 0xFF);
+
+
         mmu
+    }
+
+    fn update_tileset(&mut self, addr: u16) {
+        let effective_addr = addr - 0x8000;
+        // 384 maximum total tiles
+        // 256 is mem spaces are set to overlap fully
+        // each tile ocupies 16 bytes, therefore 16 address spaces
+        
+        let tile = effective_addr / 16;
+        // let y = (effective_addr % 16) / 2; 
+        let y = ((addr >> 1) & 7) as u8;
+
+        for x in 0..8 {
+            let bit_idx: u8 = 1 << (7 - x);
+
+            let color_lower; 
+            if self.gpu_vram[(addr & 0x1FFE) as usize] & bit_idx > 0 
+                { color_lower = 1 } else { color_lower = 0 };
+
+            let color_higher;
+            if self.gpu_vram[((addr & 0x1FFE) + 1) as usize] & bit_idx > 0 
+                { color_higher = 2 } else { color_higher = 0 };
+
+            self.tileset[tile as usize][y as usize][x as usize] = color_lower + color_higher;
+        }
     }
 
     pub fn write_rom_to_bank_0(&mut self, rom_data: &Vec<u8>) {
@@ -86,6 +132,11 @@ impl Mmu {
                 self.gpu_vram[(addr - 0x8000) as usize]
             }
             
+            // cart ram
+            0xA000 | 0xB000 => {
+                self.cart_ram[(addr - 0xA000) as usize]
+            }
+            
             // internal ram
             0xC000 | 0xD000 => {
                 self.working_ram[(addr - 0xC000) as usize]
@@ -118,18 +169,14 @@ impl Mmu {
                     // },
 
                     0x0F00 => {
-                        // if addr == 0xFF00 {
-                        //     return self.keys.read();
-                        // }
+                        if addr == 0xFF00 {
+                            return self.input.read_joyp();
+                        }
 
                         if addr == 0xFF0F {
                             return self.interupts.flags
                         }
-
-                        if addr == 0xFF44 {
-                            return self.io[0x44];
-                        }
-                        
+                      
                         else if addr == 0xFFFF {
                             return self.interupts.enable
                         }
@@ -171,9 +218,9 @@ impl Mmu {
             // vram
             0x8000 | 0x9000 => {
                 self.gpu_vram[(addr - 0x8000) as usize] = val;
-                // if addr < 0x97FF { 
-                //     self.update_tileset(addr); 
-                // }
+                if addr < 0x97FF { 
+                    self.update_tileset(addr); 
+                }
             }
 
             0xC000 | 0xD000 => {
@@ -204,11 +251,11 @@ impl Mmu {
                     },
 
                     0x0F00 => {
-                        // if addr == 0xFF00 {
-                        //     self.keys.write(val);
-                        // }
+                        if addr == 0xFF00 {
+                            self.input.set_column_line(val);
+                        }
 
-                        if addr >= 0xFF80 && addr <= 0xFFFE {
+                        else if addr >= 0xFF80 && addr <= 0xFFFE {
                             self.zero_page[(addr - 0xFF80) as usize] = val;
                         }
                         
@@ -225,6 +272,7 @@ impl Mmu {
                         }
 
                         else if addr == 0xFF46 {
+                            // println!("0xFF46 was written too! Is this being handled correctly? (timing wise)");
                             let source_addr: u16 = (val as u16) << 8;
 
                             for i in 0..160 {
@@ -233,11 +281,11 @@ impl Mmu {
                             }
                         }
 
-                        // else if addr == 0xFF47 {
-                        //     for i in 0..4 {
-                        //         self.bg_palette[i] = PALETTE[((val >> (i * 2)) & 3) as usize];
-                        //     }
-                        // }
+                        else if addr == 0xFF47 {
+                            for i in 0..4 {
+                                self.bg_palette[i] = PALETTE[((val >> (i * 2)) & 3) as usize];
+                            }
+                        }
 
                         // else if addr == 0xFF48 {
                         //     for i in 0..4 {

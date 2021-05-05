@@ -1,4 +1,6 @@
 use std::{cell::RefCell, fmt, rc::Rc};
+use crate::gameboy::cpu::disassembler::disassemble_cb_prefix_op;
+
 use self::disassembler::{Instruction, InstructionStep, disassemble};
 use super::mmu::Mmu;
 
@@ -235,6 +237,115 @@ impl Cpu {
         result
     }
 
+    // CB ARITHMETIC
+
+    fn rlc(&mut self, val: u8) -> u8 {
+        self.set_flag_if_cond_else_clear((val & 0x80) != 0, Flag::C);
+        
+        let carry = (val & 0x80) >> 7;
+        let result = (val << 1).wrapping_add(carry);
+
+        self.handle_zero_flag(val);
+        self.clear_flag(Flag::N);
+        self.clear_flag(Flag::H);
+
+        result
+    }
+
+    fn rrc(&mut self, val: u8) -> u8 {
+        let carry = val & 0x01;
+        let mut result = val >> 1;
+
+        if carry != 0 {
+            self.set_flag(Flag::C);
+            result = result | 0x80;
+        } 
+        else { self.clear_flag(Flag::C); }
+
+        self.handle_zero_flag(result);
+        self.clear_flag(Flag::N);
+        self.clear_flag(Flag::H);
+
+        result
+    }
+
+    fn rl(&mut self, val: u8) -> u8 {
+        let carry = if self.is_flag_set(Flag::C)
+            { 1 } else { 0 };
+        let result = (val << 1).wrapping_add(carry);
+
+        self.set_flag_if_cond_else_clear(val & 0x80 != 0, Flag::C);
+        self.handle_zero_flag(result);
+        self.clear_flag(Flag::N);
+        self.clear_flag(Flag::H);
+
+        result
+    }
+
+    fn rr(&mut self, val: u8) -> u8 {
+        let mut result = val >> 1;
+        if self.is_flag_set(Flag::C) {
+            result = result | 0x80;
+        }
+
+        self.set_flag_if_cond_else_clear(val & 0x01 != 0, Flag::C);
+        self.handle_zero_flag(result);
+        self.clear_flag(Flag::N);
+        self.clear_flag(Flag::H);
+
+        result
+    }
+
+    fn sla(&mut self, val: u8) -> u8 {
+        let result = val << 1;
+
+        self.set_flag_if_cond_else_clear(val & 0x80 != 0, Flag::C);
+        self.handle_zero_flag(result);
+        self.clear_flag(Flag::N);
+        self.clear_flag(Flag::H);
+
+        result
+    }
+
+    fn sra(&mut self, val: u8) -> u8 {
+        let result = (val & 0x80) | (val >> 1);
+
+        self.set_flag_if_cond_else_clear(val & 0x01 != 0, Flag::C);
+        self.handle_zero_flag(result);
+        self.clear_flag(Flag::N);
+        self.clear_flag(Flag::H);
+
+        result
+    }
+
+    fn swap(&mut self, val: u8) -> u8 {
+        let result = ((val & 0x0F) << 4) | ((val & 0xF0) >> 4);
+
+        self.handle_zero_flag(result);
+        self.clear_flag(Flag::C);
+        self.clear_flag(Flag::N);
+        self.clear_flag(Flag::H);
+
+        result
+    }
+
+    fn srl(&mut self, val: u8) -> u8 {
+        let result = val >> 1;
+
+        self.set_flag_if_cond_else_clear(val & 0x01 != 0, Flag::C);
+        self.handle_zero_flag(result);
+        self.clear_flag(Flag::N);
+        self.clear_flag(Flag::H);
+
+        result
+    }
+
+    fn bit(&mut self, bit: u8, val: u8) {
+        self.set_flag_if_cond_else_clear(val & bit == 0, Flag::Z);
+        self.clear_flag(Flag::N);
+        self.clear_flag(Flag::H);
+    }
+
     // 16bit REGISTER HELPER FUNCS
 
     fn af(&self) -> u16 {
@@ -308,16 +419,29 @@ impl Cpu {
     pub fn tick(&mut self) {
         if self.instruction.is_none() {
             let opcode = self.fetch();
-            let instruction = disassemble(opcode);
+            let instruction = match opcode {
+                0xCB => disassemble_cb_prefix_op(self.fetch()),
+                _ => disassemble(opcode)
+            };
 
             if false {
-                let instr_human_readable = instruction.human_readable.clone();
-                // instr_human_readable = instr_human_readable.replace("u8", format!("{:#04X}", self.operand8).as_ref());
-                // instr_human_readable = instr_human_readable.replace("i8", format!("{:#04X}", self.operand8).as_ref());
-                // instr_human_readable = instr_human_readable.replace("u16", format!("{:#06X}", self.operand16).as_ref());
-                let s = format!("PC:{} OP:{:#04X} {}", self.pc - 1, opcode, instr_human_readable);
+                let mut instr_human_readable = instruction.human_readable.clone();
+
+                if instr_human_readable.contains("u8") {
+                    let op8 = (*self.mmu).borrow().read_byte(self.pc);
+                    instr_human_readable = instr_human_readable.replace("u8", format!("{:#04X}", op8).as_ref());
+                }
+                else if instr_human_readable.contains("i8") {
+                    let op8 = (*self.mmu).borrow().read_byte(self.pc) as i8;
+                    instr_human_readable = instr_human_readable.replace("i8", format!("{:#04X}", op8).as_ref());
+                } 
+                else if instr_human_readable.contains("u16") {
+                    let op16 = (*self.mmu).borrow().read_word(self.pc);
+                    instr_human_readable = instr_human_readable.replace("u16", format!("{:#06X}", op16).as_ref());
+                }
+
+                let s = format!("PC:{:#06X} OP:{:#04X} {}", self.pc - 1, opcode, instr_human_readable);
                 println!("{}", s);
-                // println!("{:?}\n", self);
             }
 
             self.machine_cycles_taken_for_current_step += 1;

@@ -3,18 +3,18 @@ use fmt::Display;
 
 use crate::gameboy::cpu::{Cpu, Flag};
 
+/*
+    ================
+     CONDITION CODE
+    ================
+*/
+
 pub(super) enum ConditionCode {
     NotZero  = 0,
     Zero     = 1,
     NotCarry = 2,
     Carry    = 3
 }
-
-/*
-    ================
-     CONDITION CODE
-    ================
-*/
 
 impl Display for ConditionCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -84,11 +84,41 @@ impl RegisterPair1 {
     }
 }
 
-enum RegisterPair2 {
-    BC,
-    DE,
-    HL,
-    AF
+/*
+    =================
+     Register Pair 2
+    =================
+*/
+
+#[derive(Copy, Clone)]
+pub(super) enum RegisterPair2 {
+    BC = 0,
+    DE = 1,
+    HL = 2,
+    AF = 3
+}
+
+impl Display for RegisterPair2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RegisterPair2::BC => write!(f, "BC"),
+            RegisterPair2::DE => write!(f, "DE"),
+            RegisterPair2::HL => write!(f, "HL"),
+            RegisterPair2::AF => write!(f, "AF")
+        }
+    }
+}
+
+impl RegisterPair2 {
+    pub(super) fn from_u8(index: u8) -> Self {
+        match index {
+            0 => Self::BC,
+            1 => Self::DE,
+            2 => Self::HL,
+            3 => Self::AF,
+            _ => panic!("Invalid RegisterPair2 index")
+        }
+    }
 }
 
 /*
@@ -190,3 +220,54 @@ impl ArithmeticOp {
         }
     }
 }
+
+/*
+    ====================
+     Rotation/Shift ops
+    ====================
+*/
+
+#[derive(Copy, Clone)]
+pub(super) enum CBOp {
+    RLC = 0,
+    RRC = 1,
+    RL = 2,
+    RR = 3,
+    SLA = 4,
+    SRA = 5,
+    SWAP  = 6,
+    SRL  = 7
+}
+
+impl CBOp {
+    pub(super) fn from_u8(index: u8) -> Self {
+        match index {
+            0 => Self::RLC,
+            1 => Self::RRC,
+            2 => Self::RL,
+            3 => Self::RR,
+            4 => Self::SLA,
+            5 => Self::SRA,
+            6 => Self::SWAP,
+            7 => Self::SRL,
+
+            _ => panic!("Invalid ArithmeticOp index!")
+        }
+    }
+}
+
+impl Display for CBOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::RLC => write!(f, "RLC"),
+            Self::RRC => write!(f, "RRC"),
+            Self::RL => write!(f, "RL"),
+            Self::RR => write!(f, "RR"),
+            Self::SLA => write!(f, "SLA"),
+            Self::SRA => write!(f, "SRA"),
+            Self::SWAP => write!(f, "SWAP"),
+            Self::SRL => write!(f, "SRL"),
+        }
+    }
+}
+
