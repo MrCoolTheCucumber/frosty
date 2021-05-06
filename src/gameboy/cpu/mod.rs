@@ -188,21 +188,23 @@ impl Cpu {
         );
         self.handle_zero_flag(result);
 
-        // TODO: check if this half carry check is correct!!!!!
-        let overflow: u16 = val1 as u16 + val2 as u16;
-        let is_half_carry = (((result & 0x0F) as u16) + (overflow & 0x0F)) > 0x0F;
+        let is_half_carry = (((val1 & 0x0F)) + (val2 & 0x0F)) > 0x0F;
         self.set_flag_if_cond_else_clear(is_half_carry, Flag::H);
 
         result
     }
 
+    // https://stackoverflow.com/questions/42091214/gbz80-adc-instructions-fail-test
+    // http://istvannovak.net/2018/02/01/zx-spectrum-ide-part-5-implementing-z80-instructions-1/ ?
+    // https://stackoverflow.com/questions/8034566/overflow-and-carry-flags-on-z80
     fn adc(&mut self, _val: u8) {
         let val = _val.wrapping_add(if self.is_flag_set(Flag::C) {1} else {0});
         let result = self.a.wrapping_add(val);
 
         let overflowed = self.a.checked_add(val).is_none();
         self.set_flag_if_cond_else_clear(overflowed, Flag::C);
-        self.set_flag_if_cond_else_clear(val == self.a, Flag::Z);
+        
+        self.handle_zero_flag(result);
         
         let is_half_carry = ((val & 0x0F) + (self.a & 0x0F)) > 0x0F;
         self.set_flag_if_cond_else_clear(is_half_carry, Flag::H);
@@ -221,17 +223,31 @@ impl Cpu {
         self.set_flag(Flag::N);
     }
 
+    fn sbc(&mut self, val: u8) {
+        let value = val.wrapping_add(
+            if self.is_flag_set(Flag::C) {1} else {0}
+        );
+        let result = self.a.wrapping_add(value);
+        let overflowed = self.a.checked_add(value).is_none();
+        self.set_flag_if_cond_else_clear(overflowed, Flag::C);
+        self.set_flag_if_cond_else_clear(value == self.a, Flag::Z);
+
+        let is_half_carry = ((value & 0x0F) + (self.a & 0x0F)) > 0x0F;
+        self.set_flag_if_cond_else_clear(is_half_carry, Flag::H);
+
+        self.set_flag(Flag::N);
+        self.a = result;
+    }
+
     fn add_two_reg_u16(&mut self, val1: u16, val2: u16) -> u16 {
         let result = val1.wrapping_add(val2);
 
         self.clear_flag(Flag::N);
 
-        let overflowed = val1.checked_add(val2).is_none(); // check for overflow
+        let overflowed = val1.checked_add(val2).is_none();
         self.set_flag_if_cond_else_clear(overflowed, Flag::C);
 
-        // https://newbedev.com/game-boy-half-carry-flag-and-16-bit-instructions-especially-opcode-0xe8
-        // TODO: check if this half carry check is correct!!!!!
-        let half_carry_occured = ((val1 & 0x0F) + (val2 & 0x0F)) > 0x0F;
+        let half_carry_occured = ((val1 & 0x7FF) + (val2 & 0x7FF)) > 0x7FF;
         self.set_flag_if_cond_else_clear(half_carry_occured, Flag::H);
 
         result
@@ -341,9 +357,9 @@ impl Cpu {
     }
 
     fn bit(&mut self, bit: u8, val: u8) {
-        self.set_flag_if_cond_else_clear(val & bit == 0, Flag::Z);
+        self.set_flag_if_cond_else_clear(val & (1 << bit) == 0, Flag::Z);
         self.clear_flag(Flag::N);
-        self.clear_flag(Flag::H);
+        self.set_flag(Flag::H);
     }
 
     // 16bit REGISTER HELPER FUNCS

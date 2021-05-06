@@ -78,6 +78,21 @@ impl Ppu {
         (*self.mmu).borrow_mut().io[0x44] = val;
     }
 
+    fn set_mode_lcdc(&mut self, mode: PpuMode) {
+        let mut mmu = (*self.mmu).borrow_mut();
+        let mut lcdc = mmu.io[0x41];
+        lcdc = (lcdc & 0b11111100) | (mode as u8);
+        mmu.io[0x41] = lcdc;
+    }
+
+    fn get_lyc(&self) -> u8 {
+        (*self.mmu).borrow().io[0x45]
+    }
+
+    fn lyc_check_enabled(&self) -> bool {
+        (*self.mmu).borrow().io[0x41] & 0b0100_0000 != 0
+    }
+
     fn get_bg_map_start_addr(ldlc_flags: u8) -> u16 {
         match (ldlc_flags & LcdControlFlag::BGTileMapAddress as u8) != 0 {
             true => 0x9C00,
@@ -101,12 +116,18 @@ impl Ppu {
                     // if scanline is 144, go to VBlank
                     // otherwise go to OAM (mode 2)
                     let current_scan_line = self.inc_scan_line();
+                    if current_scan_line == self.get_lyc() && self.lyc_check_enabled() {
+                        (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::Stat);
+                    }
+
                     if current_scan_line == 144 {
                         // TODO: request a VBlank interupt too?
-                        (&self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::VBlank);
+                        (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::VBlank);
+                        self.set_mode_lcdc(PpuMode::VBlank);
                         self.mode = PpuMode::VBlank;
                     }
                     else {
+                        self.set_mode_lcdc(PpuMode::OAM);
                         self.mode = PpuMode::OAM;
                     }
                 }
@@ -122,6 +143,7 @@ impl Ppu {
                         self.mode_clock_cycles = 0;
                         self.frame_clock_cycles = 0;
                         
+                        self.set_mode_lcdc(PpuMode::OAM);
                         self.mode = PpuMode::OAM;
                     }
                 }
@@ -130,6 +152,7 @@ impl Ppu {
             PpuMode::OAM => {
                 if self.mode_clock_cycles == 80 {
                     self.mode_clock_cycles = 0;
+                    self.set_mode_lcdc(PpuMode::VRAM);
                     self.mode = PpuMode::VRAM;
                 }
             }
@@ -143,6 +166,7 @@ impl Ppu {
                 if self.mode_clock_cycles == 172 {
                     self.mode_clock_cycles = 0;
                     self.scan_line(); // draw line!
+                    self.set_mode_lcdc(PpuMode::HBlank);
                     self.mode = PpuMode::HBlank;
                 }
             }

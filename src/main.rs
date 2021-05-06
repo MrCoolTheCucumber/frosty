@@ -5,14 +5,14 @@ mod gameboy;
 use std::{thread, time::Duration};
 
 use ggez::{Context, ContextBuilder, GameResult, conf::{FullscreenType, NumSamples, WindowMode, WindowSetup}};
-use ggez::event::{self, EventHandler};
+use ggez::event::{self, EventHandler, KeyCode, KeyMods};
 use ggez::graphics;
 
 use crate::gameboy::GameBoy;
 
 const WIDTH: u32 = 160;
 const HEIGHT: u32 = 144;
-const SCALE: u32 = 2;
+const SCALE: u32 = 1;
 const SCALED_IMAGE_BUFFER_LENGTH: usize = 160 * 144 * 4 * SCALE as usize;
 
 struct GBState {
@@ -43,18 +43,18 @@ const CYCLES_PER_SECOND: u64 = 69_905;
 impl EventHandler for GBState {
     
     // Key handlers
-    // fn key_down_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods, _repeat: bool) {
-    //     if _repeat { return; }
-    //     self.gb.get_keys().key_down(keycode);
-    //     self.gb.trigger_joypad_interupt();
+    fn key_down_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods, _repeat: bool) {
+        if _repeat { return; }
+        self.gb.key_down(keycode);
+        // self.gb.trigger_joypad_interupt();
 
-    //     println!("key pressed");
-    // }
+        println!("key pressed");
+    }
 
-    // fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
-    //     self.gb.get_keys().key_up(keycode);
-    //     println!("key released");
-    // }
+    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
+        self.gb.key_up(keycode);
+        println!("key released");
+    }
 
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         for _ in 0..CYCLES_PER_SECOND {

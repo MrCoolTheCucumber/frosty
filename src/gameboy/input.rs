@@ -1,3 +1,5 @@
+use ggez::event::KeyCode;
+
 
 // http://imrannazar.com/GameBoy-Emulation-in-JavaScript:-Input
 
@@ -54,8 +56,44 @@ impl Input {
                 result = result | (self.down << 3);
                 result
             }
+            // 4th & 5th
+            0x30 => {
+                self.a | (self.b << 1) | (self.select << 2) | (self.start << 3) |
+                (self.left << 1) | (self.up << 2) | (self.down << 3)
+            }
 
-            _ => 0xFF
+            _ => 0
+        }
+    }
+
+    pub fn key_down(&mut self, code: KeyCode) {
+        match code {
+            KeyCode::W => self.up = 0,
+            KeyCode::A => self.left = 0,
+            KeyCode::S => self.down = 0,
+            KeyCode::D => self.right = 0,
+            KeyCode::O => self.a = 0,
+            KeyCode::K => self.b = 0,
+            KeyCode::N => self.select = 0,
+            KeyCode::M => {
+                self.start = 0;
+                println!("Start pressed!");
+            },
+            _ => {} // do nothing
+        }
+    }
+
+    pub fn key_up(&mut self, code: KeyCode) {
+        match code {
+            KeyCode::W => self.up = 1,
+            KeyCode::A => self.left = 1,
+            KeyCode::S => self.down = 1,
+            KeyCode::D => self.right = 1,
+            KeyCode::O => self.a = 1,
+            KeyCode::K => self.b = 1,
+            KeyCode::N => self.select = 1,
+            KeyCode::M => self.start = 1,
+            _ => {} // do nothing
         }
     }
 }

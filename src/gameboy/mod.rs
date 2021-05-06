@@ -1,5 +1,7 @@
 use std::{cell::RefCell, fs::File, io::Read, rc::Rc};
 
+use ggez::event::KeyCode;
+
 use self::{cpu::Cpu, interupt::Interupt, mmu::Mmu, ppu::Ppu, timer::Timer};
 
 mod cpu;
@@ -39,6 +41,16 @@ impl GameBoy {
             ppu,
             timer
         }
+    }
+
+    pub fn key_down(&mut self, key: KeyCode) {
+        let mut mmu = (*self.mmu).borrow_mut();
+        mmu.input.key_down(key);
+        mmu.interupts.request_interupt(interupt::InterruptFlag::Joypad);
+    }
+
+    pub fn key_up(&mut self, key: KeyCode) {
+        (*self.mmu).borrow_mut().input.key_up(key);
     }
 
     pub fn get_frame_buffer(&self) -> &[u8] {

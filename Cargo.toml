@@ -8,5 +8,4 @@ edition = "2018"
 
 [dependencies]
 colored = "2"
-sdl2 = "0.34.5"
 ggez = "0.5.1"

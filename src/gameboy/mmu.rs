@@ -66,10 +66,6 @@ impl Mmu {
         mmu.write_byte(0xFF48, 0xFF);
         mmu.write_byte(0xFF49, 0xFF);
 
-        // mmu.write_byte(0xFF00, 0xFF);
-        // mmu.write_byte(0xFF80, 0xFF);
-
-
         mmu
     }
 
@@ -221,6 +217,10 @@ impl Mmu {
                 if addr < 0x97FF { 
                     self.update_tileset(addr); 
                 }
+            }
+
+            0xA000 | 0xB000 => {
+                self.cart_ram[(addr - 0xA000) as usize] = val;
             }
 
             0xC000 | 0xD000 => {
