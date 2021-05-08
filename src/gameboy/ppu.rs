@@ -12,6 +12,27 @@ pub struct Ppu {
     frame_clock_cycles: u64
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct Sprite {
+    pub x: u8,
+    pub y: u8,
+    pub tile: u8,
+
+    pub palette: u8,
+    pub xflip: u8,
+    pub yflip: u8,
+    pub priority: u8
+}
+
+impl Sprite {
+    pub fn default() -> Self {
+        Self {
+            x: 0, y: 0, tile: 0, palette: 0,
+            xflip: 0, yflip: 0, priority: 0
+        }
+    }
+}
+
 enum PpuMode {
     HBlank = 0, // mode 0
     VBlank = 1, // mode 1
@@ -121,7 +142,6 @@ impl Ppu {
                     }
 
                     if current_scan_line == 144 {
-                        // TODO: request a VBlank interupt too?
                         (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::VBlank);
                         self.set_mode_lcdc(PpuMode::VBlank);
                         self.mode = PpuMode::VBlank;
@@ -168,6 +188,10 @@ impl Ppu {
                     self.scan_line(); // draw line!
                     self.set_mode_lcdc(PpuMode::HBlank);
                     self.mode = PpuMode::HBlank;
+
+                    if self.get_scan_line() == self.get_lyc() && self.lyc_check_enabled() {
+                        (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::Stat);
+                    }
                 }
             }
         }
@@ -250,6 +274,59 @@ impl Ppu {
                         i_tile += 128;
                         tile = i_tile as u16;
                     }
+                }
+            }
+        }
+
+        // sprite code heavily inspired from below, until FIFO impl?
+        // https://github.com/mvdnes/rboy/blob/master/src/gpu.rs
+
+        let sprite_size: i32 = if ldlc_flags & LcdControlFlag::OBJSize as u8 != 0 {16} else {8};
+        if true {
+            for index in 0..40 {
+                let i = 39 - index;
+                let sprite_addr = (i as usize) * 4;
+                
+                let sprite_y = mmu.sprite_table[sprite_addr] as u16 as i32 - 16;
+                let sprite_x = mmu.sprite_table[sprite_addr + 1] as u16 as i32 - 8;
+                let tile_num = 
+                    (mmu.sprite_table[sprite_addr + 2] & 
+                    (if sprite_size == 16 { 0xFE } else { 0xFF })) as u16;
+
+                let flags = mmu.sprite_table[sprite_addr + 3];
+                let sprite_palette: usize = if flags & (1 << 4) != 0 {1} else {0};
+                let xflip: bool = flags & (1 << 5) != 0;
+                let yflip: bool = flags & (1 << 6) != 0;
+                let belowbg: bool = flags & (1 << 7) != 0;
+
+                let scan_line = scan_line as i32;
+
+                if scan_line < sprite_y || scan_line >= sprite_y + sprite_size { continue }
+                if sprite_x < - 7 || sprite_x >= 160 { continue }
+
+                let tile_y: u16 = if yflip {
+                    (sprite_size - 1 - (scan_line - sprite_y)) as u16
+                } else {
+                    (scan_line - sprite_y) as u16
+                };
+
+                let tile_address = 0x8000 + tile_num * 16 + tile_y * 2;
+                let b1 = mmu.read_byte(tile_address);
+                let b2 = mmu.read_byte(tile_address + 1);
+
+                'inner: for x in 0..8 {
+                    if sprite_x + x < 0 || sprite_x + x >= 160 { continue }
+                    if belowbg && scan_line_row[(sprite_x + x) as usize] == 0 { continue 'inner }
+
+                    let xbit = 1 << (if xflip { x } else { 7 - x } as u32);
+                    let colnr = (if b1 & xbit != 0 { 1 } else { 0 }) |
+                        (if b2 & xbit != 0 { 2 } else { 0 });
+                    if colnr == 0 { continue }
+
+                    let color = mmu.sprite_palette[sprite_palette][colnr];
+                    let pixel_offset = ((scan_line * 160) + sprite_x + x) as usize;
+
+                    self.frame_buffer[pixel_offset] = color;
                 }
             }
         }

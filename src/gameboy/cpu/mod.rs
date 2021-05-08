@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fmt, rc::Rc};
+use std::{cell::RefCell, fmt, fs::File, io::Write, rc::Rc};
 use crate::gameboy::cpu::disassembler::disassemble_cb_prefix_op;
 
 use self::disassembler::{Instruction, InstructionStep, disassemble};
@@ -34,12 +34,15 @@ pub struct Cpu {
     temp_val_16: u16,
 
     instruction: Option<Instruction>,
-    machine_cycles_taken_for_current_step: u8
+    machine_cycles_taken_for_current_step: u8,
+
+    debug: bool,
+    log: Option<File>
 }
 
 impl fmt::Debug for Cpu {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Cpu:")
+        f.debug_struct("cpu")
             .field("af", &format!("{:#06X}", self.af()))
             .field("bc", &format!("{:#06X}", self.bc()))
             .field("de", &format!("{:#06X}", self.de()))
@@ -54,6 +57,12 @@ impl fmt::Debug for Cpu {
 
 impl Cpu {
     pub fn new(mmu: Rc<RefCell<Mmu>>) -> Self {
+        let log = false;
+        let mut file: Option<File> = None;
+        if log {
+            file = Some(File::create("I:\\Dev\\gameboy-rs\\log.txt").unwrap());
+        }
+
         Self {
             mmu,
 
@@ -75,7 +84,10 @@ impl Cpu {
             temp_val_16: 0,
 
             instruction: None,
-            machine_cycles_taken_for_current_step: 0
+            machine_cycles_taken_for_current_step: 0,
+
+            debug: false,
+            log: file
         }
     }
 
@@ -194,20 +206,17 @@ impl Cpu {
         result
     }
 
-    // https://stackoverflow.com/questions/42091214/gbz80-adc-instructions-fail-test
-    // http://istvannovak.net/2018/02/01/zx-spectrum-ide-part-5-implementing-z80-instructions-1/ ?
-    // https://stackoverflow.com/questions/8034566/overflow-and-carry-flags-on-z80
-    fn adc(&mut self, _val: u8) {
-        let val = _val.wrapping_add(if self.is_flag_set(Flag::C) {1} else {0});
-        let result = self.a.wrapping_add(val);
+    fn adc(&mut self, val: u8) {
+        let carry: u8 = if self.is_flag_set(Flag::C) {1} else {0};
 
-        let overflowed = self.a.checked_add(val).is_none();
-        self.set_flag_if_cond_else_clear(overflowed, Flag::C);
-        
+        let is_half_carry = ((self.a & 0x0F) + (val & 0x0F) + carry) & 0x10 == 0x10;
+        let is_carry = ((self.a as u16) + (val as u16) + (carry as u16)) & 0x100 == 0x100;
+
+        let result = self.a.wrapping_add(val).wrapping_add(carry);
+
         self.handle_zero_flag(result);
-        
-        let is_half_carry = ((val & 0x0F) + (self.a & 0x0F)) > 0x0F;
         self.set_flag_if_cond_else_clear(is_half_carry, Flag::H);
+        self.set_flag_if_cond_else_clear(is_carry, Flag::C);
 
         self.clear_flag(Flag::N);
         self.a = result;
@@ -224,16 +233,23 @@ impl Cpu {
     }
 
     fn sbc(&mut self, val: u8) {
-        let value = val.wrapping_add(
-            if self.is_flag_set(Flag::C) {1} else {0}
-        );
-        let result = self.a.wrapping_add(value);
-        let overflowed = self.a.checked_add(value).is_none();
-        self.set_flag_if_cond_else_clear(overflowed, Flag::C);
-        self.set_flag_if_cond_else_clear(value == self.a, Flag::Z);
+        let carry: u8 = if self.is_flag_set(Flag::C) {1} else {0};
 
-        let is_half_carry = ((value & 0x0F) + (self.a & 0x0F)) > 0x0F;
+        let is_half_carry = 
+            ((self.a & 0x0F) as i16) -
+            ((val & 0x0F) as i16) -
+            (carry as i16) < 0;
+
+        let is_full_carry = 
+            (self.a as i16) -
+            (val as i16) - 
+            (carry as i16) < 0;
+
+        let result = self.a.wrapping_sub(val).wrapping_sub(carry);
+
+        self.handle_zero_flag(result);
         self.set_flag_if_cond_else_clear(is_half_carry, Flag::H);
+        self.set_flag_if_cond_else_clear(is_full_carry, Flag::C);
 
         self.set_flag(Flag::N);
         self.a = result;
@@ -457,7 +473,12 @@ impl Cpu {
                 }
 
                 let s = format!("PC:{:#06X} OP:{:#04X} {}", self.pc - 1, opcode, instr_human_readable);
-                println!("{}", s);
+                //println!("{}                             {:?}", s, self);
+                if self.log.is_some() {
+                    self.log.as_ref().unwrap().write(format!("{} \n", s).as_ref()).unwrap();
+                    //self.log.as_ref().unwrap().write(format!("{:?} \n", self).as_ref()).unwrap();
+                    //self.log.as_ref().unwrap().write("\n".as_ref()).unwrap();
+                }
             }
 
             self.machine_cycles_taken_for_current_step += 1;

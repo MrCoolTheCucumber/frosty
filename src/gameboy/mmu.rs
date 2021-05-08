@@ -1,4 +1,4 @@
-use super::{input::Input, interupt::Interupt};
+use super::{input::Input, interupt::Interupt, ppu::Sprite};
 
 const PALETTE: [u8; 4] = [
     255, 192, 196, 0
@@ -19,6 +19,10 @@ pub struct Mmu {
     pub io: [u8; 0x100],
     zero_page: [u8; 0x80],
 
+    pub sprite_table: [u8; 0xA0],
+    pub sprite_palette: [[u8; 4]; 2],
+    pub obj_table: [Sprite; 40],
+
     pub tileset: [[[u8; 8]; 8]; 384],
     pub bg_palette: [u8; 4]
 }
@@ -38,6 +42,10 @@ impl Mmu {
             io: [0; 0x100],
             zero_page: [0; 0x80],
 
+            sprite_table: [0; 0xA0],
+            sprite_palette: [[0; 4]; 2],
+            obj_table: [Sprite::default(); 40],
+
             // ppu
             tileset: [[[0; 8]; 8]; 384],
             bg_palette: [
@@ -46,6 +54,8 @@ impl Mmu {
         };
 
         // set up zero page mem
+        mmu.write_byte(0xFF03, 0xAB);
+        mmu.write_byte(0xFF04, 0xCC);
         mmu.write_byte(0xFF10, 0x80);
         mmu.write_byte(0xFF11, 0xBF);
         mmu.write_byte(0xFF12, 0xF3);
@@ -93,6 +103,30 @@ impl Mmu {
             self.tileset[tile as usize][y as usize][x as usize] = color_lower + color_higher;
         }
     }
+
+    fn update_sprite(&mut self, sprite_table_index: u16, val: u8) {
+        // divide index by 4
+        let obj_table_index = (sprite_table_index >> 2) as usize;
+        if obj_table_index < 40 {
+            match obj_table_index & 3 {
+                0 => self.obj_table[obj_table_index].y = val,
+
+                1 => self.obj_table[obj_table_index].x = val,
+
+                2 => self.obj_table[obj_table_index].tile = val,
+
+                3 => {
+                    let obj = &mut self.obj_table[obj_table_index];
+                    obj.palette = if (val & 0x10) != 0 {1} else {0};
+                    obj.xflip =   if (val & 0x20) != 0 {1} else {0};
+                    obj.yflip =   if (val & 0x40) != 0 {1} else {0};
+                    obj.priority= if (val & 0x80) != 0 {1} else {0};
+                }
+
+                _ => unreachable!()
+            }
+        }
+    } 
 
     pub fn write_rom_to_bank_0(&mut self, rom_data: &Vec<u8>) {
         for i in 0..self.rom_bank_0.len() {
@@ -152,17 +186,16 @@ impl Mmu {
                         return self.working_ram[(addr - 0xE000) as usize];
                     },
 
-                    // 0x0E00 => {
-                    //     // if addr < 0xFEA0 {
-                    //     //     // TODO: write to sprite attr mem? for now just write it to working mem?
-                    //     //     return self.sprite_table[(addr - 0xFE00) as usize];
-                    //     // }
+                    0x0E00 => {
+                        if addr < 0xFEA0 {
+                            return self.sprite_table[(addr - 0xFE00) as usize];
+                        }
 
-                    //     // FEAO -> FEFF
-                    //     // "Empty but usable for io"?
-                    //     // Some just return here
-                    //     return 0;
-                    // },
+                        // FEAO -> FEFF
+                        // "Empty but usable for io"?
+                        // Some just return here
+                        return 0;
+                    },
 
                     0x0F00 => {
                         if addr == 0xFF00 {
@@ -240,10 +273,10 @@ impl Mmu {
                     },
 
                     0x0E00 => {
-                        // if addr < 0xFEA0 {
-                        //     self.sprite_table[(addr - 0xFE00) as usize] = val;
-                        //     self.update_sprite(addr - 0xFE00, val);
-                        // }
+                        if addr < 0xFEA0 {
+                            self.sprite_table[(addr - 0xFE00) as usize] = val;
+                            self.update_sprite(addr - 0xFE00, val);
+                        }
 
                         // "Empty but usable for io"?
                         // Some just return here
@@ -258,9 +291,15 @@ impl Mmu {
                         else if addr >= 0xFF80 && addr <= 0xFFFE {
                             self.zero_page[(addr - 0xFF80) as usize] = val;
                         }
+
+                        else if addr == 0xFF03 {
+                            self.io[0x04] = 0;
+                            self.io[0x03] = 0;
+                        }
                         
                         else if addr == 0xFF04 {
                             self.io[0x04] = 0; // writing any val to 0xFF04 sets it to 0? 
+                            self.io[0x03] = 0;
                         }
 
                         else if addr == 0xFF0F {
@@ -287,17 +326,17 @@ impl Mmu {
                             }
                         }
 
-                        // else if addr == 0xFF48 {
-                        //     for i in 0..4 {
-                        //         self.sprite_palette[0][i] = PALETTE[((val >> (i * 2)) & 3) as usize];
-                        //     }
-                        // }
+                        else if addr == 0xFF48 {
+                            for i in 0..4 {
+                                self.sprite_palette[0][i] = PALETTE[((val >> (i * 2)) & 3) as usize];
+                            }
+                        }
 
-                        // else if addr == 0xFF49 {
-                        //     for i in 0..4 {
-                        //         self.sprite_palette[1][i] = PALETTE[((val >> (i * 2)) & 3) as usize];
-                        //     }
-                        // }
+                        else if addr == 0xFF49 {
+                            for i in 0..4 {
+                                self.sprite_palette[1][i] = PALETTE[((val >> (i * 2)) & 3) as usize];
+                            }
+                        }
 
                         else if addr >= 0xFF00 && addr <= 0xFF7F {
                             self.io[(addr - 0xFF00) as usize] = val;

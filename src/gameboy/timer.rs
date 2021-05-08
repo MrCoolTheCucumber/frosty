@@ -3,25 +3,24 @@ use std::{cell::RefCell, rc::Rc};
 use super::mmu::Mmu;
 
 pub struct Timer {
-    mmu: Rc<RefCell<Mmu>>,
-    div_cycles: u64
+    mmu: Rc<RefCell<Mmu>>
 }
 
 impl Timer {
     pub fn new(mmu: Rc<RefCell<Mmu>>) -> Self {
         Self {
-            mmu,
-            div_cycles: 0
+            mmu
         }
     }
 
     pub fn tick(&mut self) {
-        self.div_cycles += 1;
-        if self.div_cycles == 256 {
-            self.div_cycles = 0;
-            let mut mmu = (*self.mmu).borrow_mut();
-            // TODO: what happens if DIV overflows?
-            mmu.io[0x04] = mmu.io[0x04].wrapping_add(1);
-        }
+        let mut mmu = (*self.mmu).borrow_mut();
+        mmu.io[0x03] = match mmu.io[0x03].checked_add(1) {
+            Some(val) => val,
+            None => {
+                mmu.io[0x04] = mmu.io[0x04].wrapping_add(1); 
+                0
+            }
+        };
     }
 }

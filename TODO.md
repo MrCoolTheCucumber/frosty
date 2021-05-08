@@ -3,6 +3,7 @@
 should be split over 2 steps and the blank step should be removed. (Though this probably isn't a big deal in terms of timming accuracy)
 - Review all CC Ops for correct timing
 - Switch to SDL2/OpenGL? http://nercury.github.io/rust/opengl/tutorial/2018/02/08/opengl-in-rust-from-scratch-01-window.html
+- make use of `unreachable!()` ?
 
 - Is something like this possible in rust? 
 ``` C++
@@ -15,18 +16,17 @@ union Register {
     };
 Register AF;
 ```
+https://github.com/Gekkio/mooneye-gb/tree/master/tests/acceptance
+https://gekkio.fi/files/mooneye-gb/latest/tests/acceptance/
+
 - 01 PASSED!
-- 03 hangs?
-- 04 ADC, SBC FAIL
+- 02 https://www.reddit.com/r/EmuDev/comments/5qa3x1/timer_doesnt_work_properly_failed_2/ need to check all timings in the disassembler
+- 03 failed
+- 04 PASSED!
 - 05 PASSED!
 - 06 PASSED!
-
-07 MAY BE THE THE REASON FOR WEIRD RESTARTS?
-- 07 need halt impl for this to work
-
-https://github.com/retrio/gb-test-roms/blob/master/cpu_instrs/source/08-misc%20instrs.s
-- 08 just restarts endlessly? one of them must be borked completely NEED TO FIX THIS
-
-- 09
+- 07 PASSED!
+- 08 PASSED!
+- 09 PASSED!
 - 10 PASSED!
-- 11 RES  x,(HL) where x = 0, 1, 3 failed ??????????? 
+- 11 PASSED!

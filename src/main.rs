@@ -12,19 +12,20 @@ use crate::gameboy::GameBoy;
 
 const WIDTH: u32 = 160;
 const HEIGHT: u32 = 144;
-const SCALE: u32 = 1;
+const SCALE: u32 = 2;
 const SCALED_IMAGE_BUFFER_LENGTH: usize = 160 * 144 * 4 * SCALE as usize;
 
 struct GBState {
     gb: GameBoy,
-    prev_cpu_cycles: u64
+    prev_cpu_cycles: u64,
+    turbo: bool
 }
 
 impl GBState {
     pub fn new(_ctx: &mut Context) -> Self {
         let rom_path = match std::env::consts::OS {
             "linux" => "/home/ruben/dev/gb-rs/tetris.gb",
-            "windows" => "I:\\Dev\\gb-rs\\tetris.gb",
+            "windows" => "I:\\Dev\\gb-rs\\03.gb",
             _ => panic!("wat?")
         };
 
@@ -33,7 +34,8 @@ impl GBState {
 
         Self {
             gb,
-            prev_cpu_cycles: 0
+            prev_cpu_cycles: 0,
+            turbo: false
         }
     }
 }
@@ -45,6 +47,8 @@ impl EventHandler for GBState {
     // Key handlers
     fn key_down_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods, _repeat: bool) {
         if _repeat { return; }
+        if keycode == KeyCode::Tab { self.turbo = true; return }
+        
         self.gb.key_down(keycode);
         // self.gb.trigger_joypad_interupt();
 
@@ -52,6 +56,7 @@ impl EventHandler for GBState {
     }
 
     fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
+        if keycode == KeyCode::Tab { self.turbo = false; return }
         self.gb.key_up(keycode);
         println!("key released");
     }
@@ -61,7 +66,9 @@ impl EventHandler for GBState {
             self.gb.tick();
         }
 
-        // thread::sleep(Duration::from_millis(5));
+        if !self.turbo {
+            thread::sleep(Duration::from_millis(5));
+        }
         graphics::set_window_title(_ctx, format!("gameboy-rs (FPS: {})", ggez::timer::fps(_ctx)).as_str());
 
         Ok(())
@@ -86,8 +93,9 @@ impl EventHandler for GBState {
             i += 4;
         }
 
-        let img = 
+        let mut img = 
             graphics::Image::from_rgba8(_ctx, WIDTH as u16, HEIGHT as u16, &image_buffer)?;
+        img.set_filter(graphics::FilterMode::Nearest);
 
         let pos: [f32; 2] = [0.0; 2];
         let mut dp = graphics::DrawParam::default();
@@ -125,7 +133,6 @@ fn main() {
         max_height: window_height,
         resizable: false,
     };
-
 
     let (mut ctx, mut event_loop) = 
         ContextBuilder::new("gb-rs", "Ruben")
