@@ -69,7 +69,7 @@ impl EventHandler for GBState {
         if !self.turbo {
             thread::sleep(Duration::from_millis(5));
         }
-        graphics::set_window_title(_ctx, format!("gameboy-rs (FPS: {})", ggez::timer::fps(_ctx)).as_str());
+        graphics::set_window_title(_ctx, format!("gameboy-rs (FPS: {})", ggez::timer::fps(_ctx) as u64).as_str());
 
         Ok(())
     }

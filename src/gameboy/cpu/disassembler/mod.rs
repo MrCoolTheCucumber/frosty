@@ -233,7 +233,7 @@ fn dissassemble_x_0(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
                             cpu.set_hl(result);
                         },
                         RegisterPair1::SP => |cpu| {
-                            let result = cpu.add_two_reg_u16(cpu.hl(), cpu.pc);
+                            let result = cpu.add_two_reg_u16(cpu.hl(), cpu.sp);
                             cpu.set_hl(result);
                         }
                     });
@@ -756,9 +756,9 @@ fn dissassemble_x_3(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
                     steps.push_back(InstructionStep::Standard(Box::new(|_cpu|{})));
                     // 16t
                     steps.push_back(InstructionStep::Standard(Box::new(|cpu: &mut Cpu|{ 
-                        let arg = (cpu.operand8 as i8) as u16;
+                        let arg = cpu.operand8 as i8 as i16 as u16;
                         
-                        let half_carry = (cpu.sp & 0x000F) + (cpu.operand8 as i8 as u16 & 0x000F) > 0x000F;
+                        let half_carry = (cpu.sp & 0x000F) + (arg & 0x000F) > 0x000F;
                         let carry = (cpu.sp & 0x00FF) + (arg & 0x00FF) > 0x00FF;
 
                         cpu.clear_flag(Flag::Z);
@@ -766,7 +766,7 @@ fn dissassemble_x_3(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
                         cpu.set_flag_if_cond_else_clear(carry, Flag::C);
                         cpu.set_flag_if_cond_else_clear(half_carry, Flag::H);
 
-                        cpu.sp = cpu.sp.wrapping_sub(arg);
+                        cpu.sp = cpu.sp.wrapping_add(arg);
                     })));
 
                     Instruction {
@@ -797,9 +797,9 @@ fn dissassemble_x_3(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
                     push_fetch_operand8_closure(&mut steps);
                     // 12t
                     steps.push_back(InstructionStep::Standard(Box::new(|cpu: &mut Cpu|{ 
-                        let arg = (cpu.operand8 as i8) as u16;
+                        let arg = cpu.operand8 as i8 as i16 as u16;
                         
-                        let half_carry = (cpu.sp & 0x000F) + (cpu.operand8 as i8 as u16 & 0x000F) > 0x000F;
+                        let half_carry = (cpu.sp & 0x000F) + (arg & 0x000F) > 0x000F;
                         let carry = (cpu.sp & 0x00FF) + (arg & 0x00FF) > 0x00FF;
 
                         cpu.clear_flag(Flag::Z);
@@ -807,7 +807,7 @@ fn dissassemble_x_3(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
                         cpu.set_flag_if_cond_else_clear(carry, Flag::C);
                         cpu.set_flag_if_cond_else_clear(half_carry, Flag::H);
 
-                        let result = cpu.sp.wrapping_sub(arg);
+                        let result = cpu.sp.wrapping_add(arg);
                         cpu.set_hl(result);
                     })));
 
