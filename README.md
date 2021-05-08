@@ -1,6 +1,6 @@
 # GameBoy Emulator written in Rust
 
-Starting again as the old one reached some architecual limits
+![image](https://user-images.githubusercontent.com/16002713/117520192-ebc23900-af9e-11eb-94b0-c4e67b1e6ac6.png)
 
 ## References Used
 - https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
