@@ -1,5 +1,7 @@
 # GameBoy Emulator written in Rust
 
+Still a work in progress but 32KB roms should mostly work (e.g. Tetris)
+
 ![image](https://user-images.githubusercontent.com/16002713/117520192-ebc23900-af9e-11eb-94b0-c4e67b1e6ac6.png)
 
 ## References Used
