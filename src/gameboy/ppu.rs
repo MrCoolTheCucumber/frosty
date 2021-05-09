@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::{Ref, RefCell}, rc::Rc};
 use super::{interupt::InterruptFlag, mmu::Mmu};
 
 
@@ -201,6 +201,21 @@ impl Ppu {
         }
     }
 
+    fn get_adjusted_tile_index(mmu: &Ref<Mmu>, addr: u16, signed_tile_index: bool) -> u16 {
+        if signed_tile_index {
+            let tile = mmu.read_byte(addr) as i8 as i16;
+            if tile >= 0{
+                tile as u16 + 256
+            }
+            else {
+                256 - (tile.abs() as u16)
+            }
+        }
+        else {
+            mmu.read_byte(addr) as u16
+        }
+    }
+
     fn scan_line(&mut self) {
         // BG Tiles are 8x8 pixels
         // tile maps are 32 * 32 tiles
@@ -234,13 +249,7 @@ impl Ppu {
         // and base offset is 0x9000
         let signed_tile_addressing: bool = ldlc_flags & LcdControlFlag::BGAndWindowTileData as u8 == 0;
 
-        let mut tile: u16 = mmu.read_byte(bg_map_tile_offset + map_offset) as u16;
-
-        if signed_tile_addressing {
-            let mut i_tile = tile as i16;
-            i_tile += 128;
-            tile = i_tile as u16;
-        }
+        let mut tile = Self::get_adjusted_tile_index(&mmu, bg_map_tile_offset + map_offset, signed_tile_addressing);
 
         // x and y above (where we actually are) need to be modded by 8
         // do give us where we are inside the current tile!
@@ -271,13 +280,8 @@ impl Ppu {
                 if x == 8 {
                     x = 0;
                     map_offset += 1; // wrapping add if over 32
-                    tile = mmu.read_byte(bg_map_tile_offset + map_offset) as u16;
 
-                    if signed_tile_addressing {
-                        let mut i_tile = tile as i16;
-                        i_tile += 128;
-                        tile = i_tile as u16;
-                    }
+                    tile = Self::get_adjusted_tile_index(&mmu, bg_map_tile_offset + map_offset, signed_tile_addressing);
                 }
             }
         }

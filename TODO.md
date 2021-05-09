@@ -20,17 +20,5 @@ https://github.com/Gekkio/mooneye-gb/tree/master/tests/acceptance
 https://gekkio.fi/files/mooneye-gb/latest/tests/acceptance/
 https://github.com/Powerlated/TurtleTests
 
-- 01 PASSED!
-- 02 https://www.reddit.com/r/EmuDev/comments/5qa3x1/timer_doesnt_work_properly_failed_2/ need to check all timings in the disassembler
-- 03 PASSED!
-- 04 PASSED!
-- 05 PASSED!
-- 06 PASSED!
-- 07 PASSED!
-- 08 PASSED!
-- 09 PASSED!
-- 10 PASSED!
-- 11 PASSED!
-
 # Mooneye todo's
 ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycles before the interrupt takes place?
