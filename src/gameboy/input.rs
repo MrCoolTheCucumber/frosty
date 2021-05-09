@@ -66,7 +66,7 @@ impl Input {
         }
     }
 
-    pub fn key_down(&mut self, code: KeyCode) {
+    pub fn key_down(&mut self, code: KeyCode) -> bool {
         match code {
             KeyCode::W => self.up = 0,
             KeyCode::A => self.left = 0,
@@ -75,12 +75,11 @@ impl Input {
             KeyCode::O => self.a = 0,
             KeyCode::K => self.b = 0,
             KeyCode::N => self.select = 0,
-            KeyCode::M => {
-                self.start = 0;
-                println!("Start pressed!");
-            },
-            _ => {} // do nothing
-        }
+            KeyCode::M => self.start = 0,
+            _ => return false
+        };
+
+        true
     }
 
     pub fn key_up(&mut self, code: KeyCode) {

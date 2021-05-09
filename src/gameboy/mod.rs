@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fs::File, io::Read, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use ggez::event::KeyCode;
 
@@ -10,6 +10,7 @@ mod interupt;
 mod ppu;
 mod timer;
 mod input;
+mod cartridge;
 
 /*
     System Clocks
@@ -29,8 +30,10 @@ pub struct GameBoy {
 }
 
 impl GameBoy {
-    pub fn new() -> Self {
-        let mmu = Rc::new(RefCell::new(Mmu::new()));
+    pub fn new(rom_path: &str) -> Self {
+        let cartridge = cartridge::create(rom_path);
+        let mmu = Rc::new(RefCell::new(Mmu::new(cartridge)));
+        
         let cpu = Cpu::new(mmu.clone());
         let ppu = Ppu::new(mmu.clone());
         let timer = Timer::new(mmu.clone());
@@ -45,8 +48,12 @@ impl GameBoy {
 
     pub fn key_down(&mut self, key: KeyCode) {
         let mut mmu = (*self.mmu).borrow_mut();
-        mmu.input.key_down(key);
-        mmu.interupts.request_interupt(interupt::InterruptFlag::Joypad);
+        let sucessful_press = mmu.input.key_down(key);
+        
+        if sucessful_press {
+            self.cpu.stopped = false;
+            mmu.interupts.request_interupt(interupt::InterruptFlag::Joypad);
+        }
     }
 
     pub fn key_up(&mut self, key: KeyCode) {
@@ -57,22 +64,9 @@ impl GameBoy {
         &self.ppu.frame_buffer
     }
 
-    pub fn load_rom(&mut self, rom_path: &str) {
-        let file = File::open(rom_path);
-        let file = match file {
-            Ok(f) => f,
-            Err(err) => panic!("Something went wrong reading the ROM: {}", err)
-        };
-
-        let mut data = Vec::new();
-        file.take(0x8000).read_to_end(&mut data).ok();
-
-        let mut mmu = (*self.mmu).borrow_mut();
-        mmu.write_rom_to_bank_0(&data);
-        mmu.write_rom_to_bank_1(&data);
-    }
-
     pub fn tick(&mut self) {
+        if self.cpu.stopped { return }
+
         self.cpu.tick();
         self.ppu.tick();
         self.timer.tick();

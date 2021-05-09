@@ -7,7 +7,10 @@ use super::{cpu::{Cpu, disassembler::{Instruction, InstructionStep}}};
 pub struct Interupt {
     pub master: u8,
     pub enable: u8,
-    pub flags: u8
+    pub flags: u8,
+
+    pub waiting_for_halt_if: bool,
+    pub halt_interupt_pending: bool
 }
 
 pub enum InterruptFlag {
@@ -34,7 +37,10 @@ impl Interupt {
         Self {
             master: 1,
             enable: 0,
-            flags: 0
+            flags: 0,
+
+            waiting_for_halt_if: false,
+            halt_interupt_pending: false
         }
     }
 
@@ -84,6 +90,10 @@ impl Interupt {
 
     pub fn request_interupt(&mut self, flag: InterruptFlag) {
         self.flags = self.flags | flag as u8;
+        
+        if self.waiting_for_halt_if {
+            self.halt_interupt_pending = true;
+        }
     }
 
     pub fn handle(interrupt: &mut Interupt, cpu: &mut Cpu) {
@@ -106,6 +116,7 @@ impl Interupt {
 
             let interrupt_instr = Self::create_interupt_instruction(interrupt_addr);
             cpu.set_interrupt_instruction(interrupt_instr);
+            cpu.halted = false;
         }
     }
 

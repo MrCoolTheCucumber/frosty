@@ -43,7 +43,6 @@ pub(super) fn disassemble(opcode: u8) -> Instruction {
         4..=u8::MAX => unreachable!()
     };
 
-    // TODO: ARE WE ALREADY SIMULATING WAITING 4T IN THE CPU MAIN LOOP???
     let fake_opcode_fetch = InstructionStep::Standard(Box::new(|_cpu| { }));
     instruction.steps.push_front(fake_opcode_fetch); // fake step for fetching the opcode
     instruction 
@@ -106,8 +105,9 @@ fn dissassemble_x_0(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
                 }
 
                 2 => {
-                    steps.push_back(InstructionStep::Instant(Box::new(|_cpu: &mut Cpu| { 
-                        panic!("STOP unimpl!"); 
+                    steps.push_back(InstructionStep::Instant(Box::new(|cpu: &mut Cpu| { 
+                        cpu.stopped = true;
+                        println!("ENTERED STOP MODE");
                     })));
                     Instruction {
                         opcode_val: opcode,
@@ -591,11 +591,39 @@ fn dissassemble_x_0(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
 }
 
 fn dissassemble_x_1(y: u8, z: u8, _p: u8, _q: u8, opcode: u8) -> Instruction {
-    if opcode == 0x76 {
-        panic!("HALT not implemented");
-    }
-
     let mut steps: VecDeque<InstructionStep> = VecDeque::new();
+
+    if opcode == 0x76 {
+        steps.push_back(InstructionStep::Instant(Box::new(|cpu: &mut Cpu| {
+            let mut mmu = (*cpu.mmu).borrow_mut();
+            
+            if mmu.interupts.is_master_enabled() {
+                // IME set
+                cpu.halted = true;
+            } 
+            else {
+                if mmu.interupts.enable & mmu.interupts.flags != 0 {
+                    // IME not set, interupt pending
+
+                    panic!("halt bug not implemented!");
+                } 
+                else {
+                    // IME not set, no interupt pending
+                    cpu.halted = true;
+                    cpu.halted_waiting_for_interupt_pending = true;
+                    mmu.interupts.waiting_for_halt_if = true;
+
+                }
+            }
+        })));
+
+        return Instruction {
+            opcode_val: opcode,
+            human_readable: String::from("HALT"),
+            length: 1,
+            steps
+        }
+    }
 
     let destination_reg = Register::from_u8(y);
     let src_val_reg = Register::from_u8(z);

@@ -25,12 +25,11 @@ impl GBState {
     pub fn new(_ctx: &mut Context) -> Self {
         let rom_path = match std::env::consts::OS {
             "linux" => "/home/ruben/dev/gb-rs/tetris.gb",
-            "windows" => "I:\\Dev\\gb-rs\\03.gb",
+            "windows" => "I:\\Dev\\gb-rs\\dmg-acid2.gb",
             _ => panic!("wat?")
         };
 
-        let mut gb = GameBoy::new();
-        gb.load_rom(rom_path);
+        let gb = GameBoy::new(rom_path);
 
         Self {
             gb,
@@ -43,22 +42,16 @@ impl GBState {
 const CYCLES_PER_SECOND: u64 = 69_905;
 
 impl EventHandler for GBState {
-    
-    // Key handlers
     fn key_down_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods, _repeat: bool) {
         if _repeat { return; }
         if keycode == KeyCode::Tab { self.turbo = true; return }
         
         self.gb.key_down(keycode);
-        // self.gb.trigger_joypad_interupt();
-
-        println!("key pressed");
     }
 
     fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
         if keycode == KeyCode::Tab { self.turbo = false; return }
         self.gb.key_up(keycode);
-        println!("key released");
     }
 
     fn update(&mut self, _ctx: &mut Context) -> GameResult {

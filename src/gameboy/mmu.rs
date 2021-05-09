@@ -1,4 +1,4 @@
-use super::{input::Input, interupt::Interupt, ppu::Sprite};
+use super::{cartridge::Cartridge, input::Input, interupt::Interupt, ppu::Sprite};
 
 const PALETTE: [u8; 4] = [
     255, 192, 196, 0
@@ -7,13 +7,9 @@ const PALETTE: [u8; 4] = [
 pub struct Mmu {
     pub interupts: Interupt,
     pub input: Input,
-
-    rom_bank_0: [u8; 0x4000],
-    rom_bank_1: [u8; 0x4000], // for now, just a static bank, but needs to be switchable?
+    cartridge: Box<dyn Cartridge>,
 
     gpu_vram: [u8; 0x2000],
-    ram_switchable: [u8; 0x2000],
-    cart_ram: [u8; 0x2000],
     working_ram: [u8; 0x2000],
 
     pub io: [u8; 0x100],
@@ -28,16 +24,13 @@ pub struct Mmu {
 }
 
 impl Mmu {
-    pub fn new() -> Self {
+    pub fn new(cartridge: Box<dyn Cartridge>) -> Self {
         let mut mmu = Self {
             interupts: Interupt::new(),
             input: Input::new(),
+            cartridge,
 
-            rom_bank_0: [0; 0x4000],
-            rom_bank_1: [0; 0x4000],
             gpu_vram: [0; 0x2000],
-            ram_switchable: [0; 0x2000],
-            cart_ram: [0; 0x2000],
             working_ram: [0; 0x2000],
             io: [0; 0x100],
             zero_page: [0; 0x80],
@@ -126,35 +119,14 @@ impl Mmu {
                 _ => unreachable!()
             }
         }
-    } 
-
-    pub fn write_rom_to_bank_0(&mut self, rom_data: &Vec<u8>) {
-        for i in 0..self.rom_bank_0.len() {
-            self.rom_bank_0[i] = rom_data[i];
-        }
-    }
-
-    pub fn write_rom_to_bank_1(&mut self, rom_data: &Vec<u8>) {
-        for i in 0..self.rom_bank_0.len() {
-            self.rom_bank_1[i] = rom_data[0x4000 + i];
-        }
     }
 
     pub fn read_byte(&self, addr: u16) -> u8 {
         match addr & 0xF000 {
-            // bios / rom_bank_0
-            0x0 => {               
-                self.rom_bank_0[addr as usize]
-            },
-
             // rom_bank_0
-            0x1000 | 0x2000 | 0x3000 => {
-                self.rom_bank_0[addr as usize]
-            }
-
-            // rom_bank_1
+            0x0000 | 0x1000 | 0x2000 | 0x3000 |
             0x4000 | 0x5000 | 0x6000 | 0x7000 => {
-                self.rom_bank_1[(addr as usize) - 0x4000]
+                self.cartridge.read_rom(addr)
             }
 
             // vram
@@ -164,7 +136,7 @@ impl Mmu {
             
             // cart ram
             0xA000 | 0xB000 => {
-                self.cart_ram[(addr - 0xA000) as usize]
+                self.cartridge.read_ram(addr - 0xA000)
             }
             
             // internal ram
@@ -240,8 +212,7 @@ impl Mmu {
         match addr & 0xF000 {
             0x0000 | 0x1000 | 0x2000 | 0x3000 | 0x4000 |
             0x5000 | 0x6000 | 0x7000 => {
-                // Do nothing, 0x000 to 0x7FFF is ROM
-                // some games for some reason try to write to rom anyway?
+                self.cartridge.write_rom(addr, val);
             }
 
             // vram
@@ -253,7 +224,7 @@ impl Mmu {
             }
 
             0xA000 | 0xB000 => {
-                self.cart_ram[(addr - 0xA000) as usize] = val;
+                self.cartridge.write_ram(addr - 0xA000, val);
             }
 
             0xC000 | 0xD000 => {

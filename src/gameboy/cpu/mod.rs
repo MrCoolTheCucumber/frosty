@@ -36,6 +36,10 @@ pub struct Cpu {
     instruction: Option<Instruction>,
     machine_cycles_taken_for_current_step: u8,
 
+    pub stopped: bool,
+    pub halted: bool,
+    pub halted_waiting_for_interupt_pending: bool,
+
     debug: bool,
     log: Option<File>
 }
@@ -85,6 +89,10 @@ impl Cpu {
 
             instruction: None,
             machine_cycles_taken_for_current_step: 0,
+
+            stopped: false,
+            halted: false,
+            halted_waiting_for_interupt_pending: false,
 
             debug: false,
             log: file
@@ -430,7 +438,8 @@ impl Cpu {
     }
 
     fn write_word_to_stack(&mut self, val: u16) {
-        self.sp -= 2;
+        // self.sp -= 2;
+        self.sp = self.sp.wrapping_sub(2);
         (*self.mmu).borrow_mut().write_word(self.sp, val);
     }
 
@@ -449,6 +458,22 @@ impl Cpu {
     // CYCLE FUNCTIONS
 
     pub fn tick(&mut self) {
+        if self.halted { 
+            if self.halted_waiting_for_interupt_pending {
+                let mut mmu = (*self.mmu).borrow_mut();
+                
+                if !mmu.interupts.halt_interupt_pending { return }
+
+                mmu.interupts.halt_interupt_pending = false;
+                mmu.interupts.waiting_for_halt_if = false;
+                self.halted_waiting_for_interupt_pending = false;
+                self.halted = false;
+            } 
+            else {
+                return
+            }
+        }
+
         if self.instruction.is_none() {
             let opcode = self.fetch();
             let instruction = match opcode {
@@ -473,7 +498,7 @@ impl Cpu {
                 }
 
                 let s = format!("PC:{:#06X} OP:{:#04X} {}", self.pc - 1, opcode, instr_human_readable);
-                //println!("{}                             {:?}", s, self);
+                println!("{}                             {:?}", s, self);
                 if self.log.is_some() {
                     self.log.as_ref().unwrap().write(format!("{} \n", s).as_ref()).unwrap();
                     //self.log.as_ref().unwrap().write(format!("{:?} \n", self).as_ref()).unwrap();

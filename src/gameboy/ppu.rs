@@ -282,8 +282,11 @@ impl Ppu {
         // https://github.com/mvdnes/rboy/blob/master/src/gpu.rs
 
         let sprite_size: i32 = if ldlc_flags & LcdControlFlag::OBJSize as u8 != 0 {16} else {8};
-        if true {
+        // draw sprites if they are enabled
+        if ldlc_flags & LcdControlFlag::OBJEnable as u8 != 0 {
+            // OAM is 160 bytes, each sprite takes 4 bytes, so 40 in total
             for index in 0..40 {
+                // iterate through them backwards
                 let i = 39 - index;
                 let sprite_addr = (i as usize) * 4;
                 
@@ -301,9 +304,11 @@ impl Ppu {
 
                 let scan_line = scan_line as i32;
 
+                // exit early if sprite is off screen
                 if scan_line < sprite_y || scan_line >= sprite_y + sprite_size { continue }
                 if sprite_x < - 7 || sprite_x >= 160 { continue }
 
+                // fetch sprite tile
                 let tile_y: u16 = if yflip {
                     (sprite_size - 1 - (scan_line - sprite_y)) as u16
                 } else {
@@ -314,8 +319,10 @@ impl Ppu {
                 let b1 = mmu.read_byte(tile_address);
                 let b2 = mmu.read_byte(tile_address + 1);
 
+                // draw each pixel of the sprite tile
                 'inner: for x in 0..8 {
                     if sprite_x + x < 0 || sprite_x + x >= 160 { continue }
+                    // if sprite prio is below bg, and the drawn bg pixel is 0 (nothing) then skip to the next pixel
                     if belowbg && scan_line_row[(sprite_x + x) as usize] == 0 { continue 'inner }
 
                     let xbit = 1 << (if xflip { x } else { 7 - x } as u32);
