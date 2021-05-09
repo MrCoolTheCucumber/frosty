@@ -1,8 +1,18 @@
 # GameBoy Emulator written in Rust
 
-Still a work in progress but 32KB roms should mostly work (e.g. Tetris)
+Still a work in progress but 32KB roms should mostly work (e.g. Tetris) and MBC1 cartridges that dont have ram dimms in it
 
 ![image](https://user-images.githubusercontent.com/16002713/117520192-ebc23900-af9e-11eb-94b0-c4e67b1e6ac6.png)
+
+## Tests
+All Blargg cpu_instrs tests passing!
+
+![image](https://user-images.githubusercontent.com/16002713/117557463-0235c680-b06b-11eb-969c-40ea69976beb.png)
+
+## TODO:
+- Pass all mooneye tests?
+- implement all cartridge types
+- refactor for better speed in non-release mode (closures in rust seem to be very slow?)
 
 ## References Used
 - https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
