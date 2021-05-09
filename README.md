@@ -12,7 +12,7 @@ All Blargg tests passing!
 ## TODO:
 - Pass all mooneye tests?
 - implement all cartridge types
-- refactor for better speed (closures in rust seem to be very slow?)
+- refactor for better speed in non-release mode (closures in rust seem to be very slow?)
 
 ## References Used
 - https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
