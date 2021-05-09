@@ -137,9 +137,7 @@ impl Ppu {
                     // if scanline is 144, go to VBlank
                     // otherwise go to OAM (mode 2)
                     let current_scan_line = self.inc_scan_line();
-                    if current_scan_line == self.get_lyc() && self.lyc_check_enabled() {
-                        (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::Stat);
-                    }
+                    self.check_ly_eq_lyc();
 
                     if current_scan_line == 144 {
                         (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::VBlank);
@@ -156,10 +154,14 @@ impl Ppu {
             PpuMode::VBlank => {
                 if self.line_clock_cycles == 456 {
                     self.line_clock_cycles = 0;
+
                     let new_scan_line = self.inc_scan_line();
+                    self.check_ly_eq_lyc();
                     
                     if new_scan_line == 154 {
                         self.set_scan_line(0);
+                        self.check_ly_eq_lyc();
+
                         self.mode_clock_cycles = 0;
                         self.frame_clock_cycles = 0;
                         
@@ -188,12 +190,14 @@ impl Ppu {
                     self.scan_line(); // draw line!
                     self.set_mode_lcdc(PpuMode::HBlank);
                     self.mode = PpuMode::HBlank;
-
-                    if self.get_scan_line() == self.get_lyc() && self.lyc_check_enabled() {
-                        (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::Stat);
-                    }
                 }
             }
+        }
+    }
+
+    fn check_ly_eq_lyc(&mut self) {
+        if self.get_scan_line() == self.get_lyc() && self.lyc_check_enabled() {
+            (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::Stat);
         }
     }
 
@@ -285,9 +289,11 @@ impl Ppu {
         // draw sprites if they are enabled
         if ldlc_flags & LcdControlFlag::OBJEnable as u8 != 0 {
             // OAM is 160 bytes, each sprite takes 4 bytes, so 40 in total
-            for index in 0..40 {
-                // iterate through them backwards
-                let i = 39 - index;
+            // Can only draw maximum of 10 sprites per line
+
+            let mut total_objects_drawn = 0;
+
+            for i in 0..40 {
                 let sprite_addr = (i as usize) * 4;
                 
                 let sprite_y = mmu.sprite_table[sprite_addr] as u16 as i32 - 16;
@@ -307,6 +313,9 @@ impl Ppu {
                 // exit early if sprite is off screen
                 if scan_line < sprite_y || scan_line >= sprite_y + sprite_size { continue }
                 if sprite_x < - 7 || sprite_x >= 160 { continue }
+
+                total_objects_drawn += 1;
+                if total_objects_drawn > 10 { break }
 
                 // fetch sprite tile
                 let tile_y: u16 = if yflip {

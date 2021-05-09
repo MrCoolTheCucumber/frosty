@@ -1,4 +1,4 @@
-use super::{cartridge::Cartridge, input::Input, interupt::Interupt, ppu::Sprite};
+use super::{cartridge::Cartridge, input::Input, interupt::Interupt, ppu::Sprite, timer::Timer};
 
 const PALETTE: [u8; 4] = [
     255, 192, 196, 0
@@ -7,6 +7,7 @@ const PALETTE: [u8; 4] = [
 pub struct Mmu {
     pub interupts: Interupt,
     pub input: Input,
+    pub timer: Timer,
     cartridge: Box<dyn Cartridge>,
 
     gpu_vram: [u8; 0x2000],
@@ -28,6 +29,7 @@ impl Mmu {
         let mut mmu = Self {
             interupts: Interupt::new(),
             input: Input::new(),
+            timer: Timer::new(),
             cartridge,
 
             gpu_vram: [0; 0x2000],
@@ -43,12 +45,10 @@ impl Mmu {
             tileset: [[[0; 8]; 8]; 384],
             bg_palette: [
                 PALETTE[0], PALETTE[1], PALETTE[2], PALETTE[3]
-            ],
+            ]
         };
 
         // set up zero page mem
-        mmu.write_byte(0xFF03, 0xAB);
-        mmu.write_byte(0xFF04, 0xCC);
         mmu.write_byte(0xFF10, 0x80);
         mmu.write_byte(0xFF11, 0xBF);
         mmu.write_byte(0xFF12, 0xF3);
@@ -184,7 +184,11 @@ impl Mmu {
 
                         else if addr >= 0xFF80 && addr <= 0xFFFE {
                             return self.zero_page[(addr - 0xFF80) as usize]
-                        } 
+                        }
+
+                        else if addr >= 0xFF03 && addr <= 0xFF07 {
+                            return self.timer.read(addr)
+                        }
 
                         else if addr >= 0xFF00 && addr <= 0xFF7F {
                             return self.io[(addr - 0xFF00) as usize]
@@ -263,14 +267,8 @@ impl Mmu {
                             self.zero_page[(addr - 0xFF80) as usize] = val;
                         }
 
-                        else if addr == 0xFF03 {
-                            self.io[0x04] = 0;
-                            self.io[0x03] = 0;
-                        }
-                        
-                        else if addr == 0xFF04 {
-                            self.io[0x04] = 0; // writing any val to 0xFF04 sets it to 0? 
-                            self.io[0x03] = 0;
+                        else if addr >= 0xFF03 && addr <= 0xFF07 {
+                            self.timer.write(addr, val);
                         }
 
                         else if addr == 0xFF0F {

@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use ggez::event::KeyCode;
 
-use self::{cpu::Cpu, interupt::Interupt, mmu::Mmu, ppu::Ppu, timer::Timer};
+use self::{cpu::Cpu, interupt::{InterruptFlag, Interupt}, mmu::Mmu, ppu::Ppu};
 
 mod cpu;
 mod mmu;
@@ -25,8 +25,7 @@ mod cartridge;
 pub struct GameBoy {
     cpu: Cpu,
     mmu: Rc<RefCell<Mmu>>,
-    ppu: Ppu,
-    timer: Timer
+    ppu: Ppu
 }
 
 impl GameBoy {
@@ -36,13 +35,11 @@ impl GameBoy {
         
         let cpu = Cpu::new(mmu.clone());
         let ppu = Ppu::new(mmu.clone());
-        let timer = Timer::new(mmu.clone());
 
         Self {
             cpu,
             mmu,
-            ppu,
-            timer
+            ppu
         }
     }
 
@@ -69,10 +66,14 @@ impl GameBoy {
 
         self.cpu.tick();
         self.ppu.tick();
-        self.timer.tick();
-
-        // handle interupts at the end (before the next cpu cycle)
+        
         let mut mmu = (*self.mmu).borrow_mut();
+        
+        let request_timer_interupt = mmu.timer.tick();
+        if request_timer_interupt {
+            mmu.interupts.request_interupt(InterruptFlag::Timer)
+        }
+
         Interupt::handle(&mut mmu.interupts, &mut self.cpu);
     }
 }

@@ -31,3 +31,6 @@ https://github.com/Powerlated/TurtleTests
 - 09 PASSED!
 - 10 PASSED!
 - 11 PASSED!
+
+# Mooneye todo's
+ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycles before the interrupt takes place?
