@@ -422,6 +422,7 @@ impl Ppu {
             // Can only draw maximum of 10 sprites per line
 
             let mut total_objects_drawn = 0;
+            let mut obj_same_x_prio = [i32::MAX; 160];
 
             for i in 0..40 {
                 let sprite_addr = (i as usize) * 4;
@@ -466,6 +467,12 @@ impl Ppu {
                         continue 'inner 
                     }
 
+                    // has another sprite already been drawn on this pixel
+                    // that has a lower or eq sprite_x val?
+                    if obj_same_x_prio[(sprite_x + x) as usize] <= sprite_x {
+                        continue 'inner 
+                    }
+
                     let xbit = 1 << (if xflip { x } else { 7 - x } as u32);
                     let colnr = (if b1 & xbit != 0 { 1 } else { 0 }) |
                         (if b2 & xbit != 0 { 2 } else { 0 });
@@ -475,6 +482,7 @@ impl Ppu {
                     let pixel_offset = ((scan_line * 160) + sprite_x + x) as usize;
 
                     self.frame_buffer[pixel_offset] = color;
+                    obj_same_x_prio[(sprite_x + x) as usize] = sprite_x;
                 }
             }
         }
