@@ -187,7 +187,7 @@ impl Ppu {
 
                 if self.mode_clock_cycles == 172 {
                     self.mode_clock_cycles = 0;
-                    self.scan_line(); // draw line!
+                    self.draw_scan_line(); // draw line!
                     self.set_mode_lcdc(PpuMode::HBlank);
                     self.mode = PpuMode::HBlank;
                 }
@@ -216,78 +216,106 @@ impl Ppu {
         }
     }
 
-    fn scan_line(&mut self) {
-        // BG Tiles are 8x8 pixels
-        // tile maps are 32 * 32 tiles
-        // but only 20 * 18 are visible in the window
+    // given the location of a 8*8 chunk of the 32*32 bg map
+    // calculate the offset in tiles from the 0th tile in the map
+    fn get_bg_map_offset(tile_y: u8, tile_x: u8) -> u16 {
+        (tile_y as u16 * 32) + tile_x as u16
+    }
+
+    // Screen shows 20 (row) * 18 (col) tiles
+    // Background map is actually 32 * 32 tiles
+    // Screen is mapped to map via ScrollX and ScrollY
+    // Screen will "wrap around to the other side
+    fn draw_scan_line(&mut self) {
         let mmu = (*self.mmu).borrow();
         let ldlc_flags = mmu.io[0x40];
 
-        let bg_map_tile_offset = Self::get_bg_map_start_addr(ldlc_flags);
         let scan_line = mmu.io[0x44];
 
-        // get the top left co-ords of the window
-        // to offset the 160 * 144 onto the 256 * 256 bg map
-        let scroll_y: u8 = mmu.io[0x42];
-        let scroll_x: u8 = mmu.io[0x43];
-
-        // where we actually are
-        let y = scroll_y.wrapping_add(scan_line) as u16;
-        let x = scroll_x as u16;
-
-        let tiles_per_dimension: u16 = 8; // = 256 / 32
-
-        let tile_y = y / tiles_per_dimension;
-        let tile_x = x / tiles_per_dimension;
-        
-        let tiles_per_row = 32; // (32 * 32) / 32
-        let mut map_offset = (tile_y * tiles_per_row) + tile_x;
-
-        // tile data can either start at 0x8000 or 0x8800
-        // if it starts at 0x8800, in other words, if the BGAndWindowTileData flag is NOT set
-        // then tiles are addressed with signed 8 bit ints rather than unsigned 8 bit ints
-        // and base offset is 0x9000
-        let signed_tile_addressing: bool = ldlc_flags & LcdControlFlag::BGAndWindowTileData as u8 == 0;
-
-        let mut tile = Self::get_adjusted_tile_index(&mmu, bg_map_tile_offset + map_offset, signed_tile_addressing);
-
-        // x and y above (where we actually are) need to be modded by 8
-        // do give us where we are inside the current tile!
-        // or you can do the & of 7 as we are working with pwers of 2 here!
-        let mut x = (x & 7) as u8;
-        let y = (y & 7) as u8;
-
-        let mut frame_buffer_offset = scan_line as usize * 160;
-        let bg_color_palette = mmu.bg_palette;
-
+        // TODO: review what happens if bg is disabled
+        //       and sprites are enabled
         let mut scan_line_row: [u8; 160] = [0; 160];
 
-        // screen width is 160
         if (ldlc_flags & LcdControlFlag::BGEnable as u8) != 0 {
+            let bg_map_start_addr = Self::get_bg_map_start_addr(ldlc_flags);
+
+            let scroll_y: u8 = mmu.io[0x42];
+            let scroll_x: u8 = mmu.io[0x43];
+
+            // top left coordinate of the view port
+            // very important that these are u8's so overflowing
+            // naturally handles "view port wrapping around"
+            let y: u8 = scan_line.wrapping_add(scroll_y);
+            let mut x: u8 = scroll_x;
+
+            // get the "tile" (x, y), which 8x8 chunk is the above coordinate in 
+            let tile_y = y / 8;
+            let mut tile_x = x / 8;
+
+            // calculate tile index
+            let mut tile_map_offset = Self::get_bg_map_offset(tile_y, tile_x);
+            // are we using signed addressing for accessing the tile data (not map)
+            let signed_tile_addressing: bool = ldlc_flags & LcdControlFlag::BGAndWindowTileData as u8 == 0;
+
+            // get the tile index from the map
+            let mut tile_index = Self::get_adjusted_tile_index(
+                &mmu, 
+                bg_map_start_addr + tile_map_offset, 
+                signed_tile_addressing
+            );
+
+            // above x and y are where we are relative to the whole bg map (256 * 256)
+            // we need x and y to be relative to the tile we want to draw
+            // so modulo by 8 (or & 7)
+            // shadow over old x an y variables
+            let tile_local_y = y & 7;
+            let mut tile_local_x = x & 7;
+
+            let mut tile_address = 0x8000 + (tile_index * 16) + (tile_local_y as u16 * 2);
+            let mut b1 = mmu.read_byte(tile_address);
+            let mut b2 = mmu.read_byte(tile_address + 1);
+
+            let mut frame_buffer_offset = scan_line as usize * 160;
+            let bg_color_palette = mmu.bg_palette;
+
+            let mut pixels_drawn_for_current_tile: u8 = 0;
             for i in 0..160 {
-                // get color of pixel in tile
-                let color = bg_color_palette[
-                    mmu.tileset[tile as usize][y as usize][x as usize] as usize
-                ];
+                let bx = 7 - tile_local_x;
+                let color_bit = ((b1 & (1 << bx)) >> bx) << 1 |
+                    ((b2 & (1 << bx)) >> bx);
+                let color = bg_color_palette[color_bit as usize];
+
                 scan_line_row[i] = color.clone();
                 self.frame_buffer[frame_buffer_offset] = color;
                 frame_buffer_offset += 1;
 
-                // move along the tile
-                x += 1; 
+                tile_local_x += 1;
+                pixels_drawn_for_current_tile += 1;
 
-                // if we move onto the next tile, reset x and fetch the new tile addr
-                if x == 8 {
-                    x = 0;
-                    map_offset += 1; // wrapping add if over 32
+                if tile_local_x == 8 {
+                    tile_local_x = 0;
 
-                    tile = Self::get_adjusted_tile_index(&mmu, bg_map_tile_offset + map_offset, signed_tile_addressing);
+                    // set up the next tile
+                    // need to be carefull here (i think?) becaucse the view port can
+                    // wrap around?
+
+                    x = x.wrapping_add(pixels_drawn_for_current_tile);
+                    pixels_drawn_for_current_tile = 0;
+
+                    tile_x = x / 8;
+                    tile_map_offset = Self::get_bg_map_offset(tile_y, tile_x);
+                    tile_index = Self::get_adjusted_tile_index(
+                        &mmu,
+                        bg_map_start_addr + tile_map_offset, 
+                        signed_tile_addressing
+                    );
+
+                    tile_address = 0x8000 + (tile_index * 16) + (tile_local_y as u16 * 2);
+                    b1 = mmu.read_byte(tile_address);
+                    b2 = mmu.read_byte(tile_address + 1);
                 }
             }
         }
-
-        // sprite code heavily inspired from below, until FIFO impl?
-        // https://github.com/mvdnes/rboy/blob/master/src/gpu.rs
 
         let sprite_size: i32 = if ldlc_flags & LcdControlFlag::OBJSize as u8 != 0 {16} else {8};
         // draw sprites if they are enabled
