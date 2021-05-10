@@ -6,6 +6,7 @@ pub struct Ppu {
     mmu: Rc<RefCell<Mmu>>,
     mode: PpuMode,
     pub frame_buffer: [u8; 160 * 144],
+    window_internal_line_counter: u8,
 
     mode_clock_cycles: u64,
     line_clock_cycles: u64,
@@ -67,6 +68,9 @@ pub enum LcdControlFlag {
     // 1: on
     WindowEnable =         0b0010_0000,
 
+    // where window tiles are mapped
+    // 0: 0x9800-0x9BFF 
+    // 1: 0x9C00-0x9FFF
     WindowTileMapAddress = 0b0100_0000,
 
     LCDDisplayEnable =     0b1000_0000
@@ -78,6 +82,7 @@ impl Ppu {
             mmu,
             mode: PpuMode::OAM,
             frame_buffer: [0; 160 * 144],
+            window_internal_line_counter: 0,
 
             mode_clock_cycles: 0,
             line_clock_cycles: 0,
@@ -116,6 +121,13 @@ impl Ppu {
 
     fn get_bg_map_start_addr(ldlc_flags: u8) -> u16 {
         match (ldlc_flags & LcdControlFlag::BGTileMapAddress as u8) != 0 {
+            true => 0x9C00,
+            false => 0x9800
+        }
+    }
+
+    fn get_window_map_start_addr(ldlc_flags: u8) -> u16 {
+        match (ldlc_flags & LcdControlFlag::WindowTileMapAddress as u8) != 0 {
             true => 0x9C00,
             false => 0x9800
         }
@@ -164,6 +176,7 @@ impl Ppu {
 
                         self.mode_clock_cycles = 0;
                         self.frame_clock_cycles = 0;
+                        self.window_internal_line_counter = 0;
                         
                         self.set_mode_lcdc(PpuMode::OAM);
                         self.mode = PpuMode::OAM;
@@ -236,6 +249,9 @@ impl Ppu {
         //       and sprites are enabled
         let mut scan_line_row: [u8; 160] = [0; 160];
 
+        // 
+        // DRAW BACKGROUND
+        //
         if (ldlc_flags & LcdControlFlag::BGEnable as u8) != 0 {
             let bg_map_start_addr = Self::get_bg_map_start_addr(ldlc_flags);
 
@@ -281,8 +297,7 @@ impl Ppu {
             let mut pixels_drawn_for_current_tile: u8 = 0;
             for i in 0..160 {
                 let bx = 7 - tile_local_x;
-                let color_bit = ((b1 & (1 << bx)) >> bx) << 1 |
-                    ((b2 & (1 << bx)) >> bx);
+                let color_bit = ((b1 & (1 << bx)) >> bx) << 1 | ((b2 & (1 << bx)) >> bx);
                 let color = bg_color_palette[color_bit as usize];
 
                 scan_line_row[i] = color.clone();
@@ -317,8 +332,91 @@ impl Ppu {
             }
         }
 
+        //
+        // DRAW WINDOW
+        //
+        let window_y = mmu.io[0x4A];
+        let window_x = mmu.io[0x4B].wrapping_sub(7);
+
+        let skip_window_draw = window_y > 166 || window_x > 143 || window_y > scan_line;
+
+        if ldlc_flags & LcdControlFlag::WindowEnable as u8 != 0 && !skip_window_draw {
+            let wd_map_start_addr = Self::get_window_map_start_addr(ldlc_flags);
+            self.window_internal_line_counter += 1;
+
+            let y = self.window_internal_line_counter - 1; //scan_line - window_y;
+            let mut x = window_x;
+
+            let tile_y = y / 8;
+
+            let mut tile_map_offset = tile_y as u16 * 32;
+            // tile_map_offset = (tile_y as u16) + tile_x as u16;
+            // are we using signed addressing for accessing the tile data (not map)
+            let signed_tile_addressing: bool = ldlc_flags & LcdControlFlag::BGAndWindowTileData as u8 == 0;
+
+            // get the tile index from the map
+            let mut tile_index = Self::get_adjusted_tile_index(
+                &mmu, 
+                wd_map_start_addr + tile_map_offset, 
+                signed_tile_addressing
+            );
+
+            // above x and y are where we are relative to the whole bg map (256 * 256)
+            // we need x and y to be relative to the tile we want to draw
+            // so modulo by 8 (or & 7)
+            // shadow over old x an y variables
+            let tile_local_y = y & 7;
+            let mut tile_local_x = x & 7;
+
+            let mut tile_address = 0x8000 + (tile_index * 16) + (tile_local_y as u16 * 2);
+            let mut b1 = mmu.read_byte(tile_address);
+            let mut b2 = mmu.read_byte(tile_address + 1);
+
+            let mut frame_buffer_offset = (scan_line as usize * 160) + x as usize;
+            let bg_color_palette = mmu.bg_palette;
+
+            let mut pixels_drawn_for_current_tile: u8 = 0;
+            let start = x.clone();
+            for i in start..160 {
+                let bx = 7 - tile_local_x;
+                let color_bit = ((b1 & (1 << bx)) >> bx) << 1 | ((b2 & (1 << bx)) >> bx);
+                let color = bg_color_palette[color_bit as usize];
+
+                scan_line_row[i as usize] = color.clone();
+                self.frame_buffer[frame_buffer_offset] = color;
+                frame_buffer_offset += 1;
+
+                tile_local_x += 1;
+                pixels_drawn_for_current_tile += 1;
+
+                if tile_local_x == 8 {
+                    tile_local_x = 0;
+
+                    // set up the next tile
+                    // need to be carefull here (i think?) becaucse the view port can
+                    // wrap around?
+
+                    x = x.wrapping_add(pixels_drawn_for_current_tile);
+                    pixels_drawn_for_current_tile = 0;
+
+                    tile_map_offset += 1;
+                    tile_index = Self::get_adjusted_tile_index(
+                        &mmu,
+                        wd_map_start_addr + tile_map_offset, 
+                        signed_tile_addressing
+                    );
+
+                    tile_address = 0x8000 + (tile_index * 16) + (tile_local_y as u16 * 2);
+                    b1 = mmu.read_byte(tile_address);
+                    b2 = mmu.read_byte(tile_address + 1);
+                }
+            }
+        } 
+
+        //
+        // DRAW SPRITES
+        //
         let sprite_size: i32 = if ldlc_flags & LcdControlFlag::OBJSize as u8 != 0 {16} else {8};
-        // draw sprites if they are enabled
         if ldlc_flags & LcdControlFlag::OBJEnable as u8 != 0 {
             // OAM is 160 bytes, each sprite takes 4 bytes, so 40 in total
             // Can only draw maximum of 10 sprites per line
