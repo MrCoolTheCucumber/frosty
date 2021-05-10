@@ -12,10 +12,10 @@ All Blargg cpu_instrs tests passing, as well as the dmg-acid2 ppu test!
 
 
 ## TODO:
-- Pass all mooneye tests?
-- implement all cartridge types
-- refactor for better speed in non-release mode (closures in rust seem to be very slow?)
-- Implement FIFO pipeline for the ppu?
+- Implement Sound? Not sure how hard it is
+- Implement all cartridge types
+- [Bonus] Pass all mooneye tests? A lot already pass
+- [Bonus] Implement FIFO pipeline for the ppu so mid scanline stuff works?
 
 ## References Used
 - https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
