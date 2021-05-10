@@ -1,7 +1,7 @@
 use super::{cartridge::Cartridge, input::Input, interupt::Interupt, ppu::Sprite, timer::Timer};
 
 const PALETTE: [u8; 4] = [
-    255, 192, 196, 0
+    255, 192, 96, 0
 ];
 
 pub struct Mmu {
@@ -280,7 +280,6 @@ impl Mmu {
                         }
 
                         else if addr == 0xFF46 {
-                            // println!("0xFF46 was written too! Is this being handled correctly? (timing wise)");
                             let source_addr: u16 = (val as u16) << 8;
 
                             for i in 0..160 {

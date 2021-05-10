@@ -297,7 +297,7 @@ impl Ppu {
             let mut pixels_drawn_for_current_tile: u8 = 0;
             for i in 0..160 {
                 let bx = 7 - tile_local_x;
-                let color_bit = ((b1 & (1 << bx)) >> bx) << 1 | ((b2 & (1 << bx)) >> bx);
+                let color_bit = ((b1 & (1 << bx)) >> bx) | ((b2 & (1 << bx)) >> bx) << 1;
                 let color = bg_color_palette[color_bit as usize];
 
                 scan_line_row[i] = color.clone();
@@ -379,7 +379,7 @@ impl Ppu {
             let start = x.clone();
             for i in start..160 {
                 let bx = 7 - tile_local_x;
-                let color_bit = ((b1 & (1 << bx)) >> bx) << 1 | ((b2 & (1 << bx)) >> bx);
+                let color_bit = ((b1 & (1 << bx)) >> bx) | ((b2 & (1 << bx)) >> bx) << 1;
                 let color = bg_color_palette[color_bit as usize];
 
                 scan_line_row[i as usize] = color.clone();
@@ -462,7 +462,9 @@ impl Ppu {
                 'inner: for x in 0..8 {
                     if sprite_x + x < 0 || sprite_x + x >= 160 { continue }
                     // if sprite prio is below bg, and the drawn bg pixel is 0 (nothing) then skip to the next pixel
-                    if belowbg && scan_line_row[(sprite_x + x) as usize] == 0 { continue 'inner }
+                    if belowbg && scan_line_row[(sprite_x + x) as usize] != mmu.bg_palette[0] { 
+                        continue 'inner 
+                    }
 
                     let xbit = 1 << (if xflip { x } else { 7 - x } as u32);
                     let colnr = (if b1 & xbit != 0 { 1 } else { 0 }) |
