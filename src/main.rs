@@ -25,7 +25,7 @@ impl GBState {
     pub fn new(_ctx: &mut Context) -> Self {
         let rom_path = match std::env::consts::OS {
             "linux" => "/home/ruben/dev/gb-rs/tetris.gb",
-            "windows" => "I:\\Dev\\gb-rs\\asteroids.gb",
+            "windows" => "I:\\Dev\\gb-rs\\graphics5.gb",
             _ => panic!("wat?")
         };
 
@@ -39,7 +39,7 @@ impl GBState {
     }
 }
 
-const CYCLES_PER_SECOND: u64 = 69_905;
+const CYCLES_PER_SCREEN_DRAW: u64 = 70_224;
 
 impl EventHandler for GBState {
     fn key_down_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods, _repeat: bool) {
@@ -55,7 +55,7 @@ impl EventHandler for GBState {
     }
 
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        for _ in 0..CYCLES_PER_SECOND {
+        for _ in 0..CYCLES_PER_SCREEN_DRAW {
             self.gb.tick();
         }
 
