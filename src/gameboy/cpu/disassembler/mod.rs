@@ -1164,7 +1164,7 @@ fn dissassemble_x_3(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
             push_fetch_operand8_closure(&mut steps);
             let arithmetic_op = ArithmeticOp::from_u8(y);
             
-            steps.push_back(InstructionStep::Standard(Box::new(move |cpu: &mut Cpu| {
+            steps.push_back(InstructionStep::Instant(Box::new(move |cpu: &mut Cpu| {
                 match arithmetic_op {
                     ArithmeticOp::ADD => cpu.a = cpu.add(cpu.a, cpu.operand8),
                     ArithmeticOp::ADC => cpu.adc(cpu.operand8),
