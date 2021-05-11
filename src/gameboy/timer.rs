@@ -60,8 +60,6 @@ impl Timer {
             _ => unreachable!()
         }
 
-        
-
         request_timer_interrupt
     }
 

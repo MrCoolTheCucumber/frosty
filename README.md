@@ -12,6 +12,7 @@ All Blargg cpu_instrs tests passing, as well as the dmg-acid2 ppu test!
 
 
 ## TODO:
+- Imlpement the HALT bug for true accuracy?
 - Implement Sound? Not sure how hard it is
 - Implement all cartridge types
 - [Bonus] Pass all mooneye tests? A lot already pass

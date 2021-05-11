@@ -1,24 +1,22 @@
 # TODO
-- stack push and pops are implemented as a blank step and then a write to temp step and assign step. Write (or read) step
-should be split over 2 steps and the blank step should be removed. (Though this probably isn't a big deal in terms of timming accuracy)
-- Review all CC Ops for correct timing
-- Switch to SDL2/OpenGL? http://nercury.github.io/rust/opengl/tutorial/2018/02/08/opengl-in-rust-from-scratch-01-window.html
-- make use of `unreachable!()` ?
+- Review all CC Ops for correct timing, write a rust test that goes through the opcode timing table in discord?!
+- Improve disassembler code. E.g. replace blank closures with func that inserts a delay instruction step?
 
-- Is something like this possible in rust? 
-``` C++
-union Register {
-        struct {
-            u8 lo;
-            u8 hi;
-        };
-        u16 value;
-    };
-Register AF;
-```
+- Switch to SDL2/OpenGL? http://nercury.github.io/rust/opengl/tutorial/2018/02/08/opengl-in-rust-from-scratch-01-window.html
+
 https://github.com/Gekkio/mooneye-gb/tree/master/tests/acceptance
 https://gekkio.fi/files/mooneye-gb/latest/tests/acceptance/
 https://github.com/Powerlated/TurtleTests
 
 # Mooneye todo's
 ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycles before the interrupt takes place?
+
+# PPU
+- https://hacktixme.ga/GBEDG/ppu/#:~:text=The%20PPU%20(which%20stands%20for,beats%20the%20CPU%20by%20far
+
+# Sound
+- https://nightshade256.github.io/2021/03/27/gb-sound-emulation.html
+- https://www.reddit.com/r/EmuDev/comments/5gkwi5/gb_apu_sound_emulation/dat3zni/
+- https://gbdev.gg8.se/wiki/articles/Gameboy_sound_hardware
+- https://gbdev.gg8.se/wiki/articles/Sound_Controller
+- https://gbdev.io/pandocs/#sound-controller
