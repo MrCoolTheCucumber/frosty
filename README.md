@@ -5,10 +5,11 @@ Still a work in progress but 32KB roms should mostly work (e.g. Tetris) and MBC1
 ![image](https://user-images.githubusercontent.com/16002713/117520192-ebc23900-af9e-11eb-94b0-c4e67b1e6ac6.png)
 
 ## Tests
-All Blargg cpu_instrs tests passing, as well as the dmg-acid2 ppu test!
+All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 ppu test!
 
 ![image](https://user-images.githubusercontent.com/16002713/117557463-0235c680-b06b-11eb-969c-40ea69976beb.png)
 ![image](https://user-images.githubusercontent.com/16002713/117734032-83679780-b1ea-11eb-868f-7b937e2e6cd8.png)
+![image](https://user-images.githubusercontent.com/16002713/117857229-74cdbe80-b284-11eb-833e-98285873fbfe.png)
 
 
 ## TODO:
