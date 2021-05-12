@@ -81,9 +81,9 @@ impl Fetcher {
 
                     FetchMode::Window => {
                         let base_tile_map_offset = (window_line_counter as u16 / 8) * 32;
-
+                        
                         Ppu::get_window_map_start_addr(ldlc_flags) + 
-                            ((self.tile_counter + base_tile_map_offset) & 0x3FF)
+                            self.tile_counter + base_tile_map_offset
                     }
                 };
                     
@@ -108,7 +108,7 @@ impl Fetcher {
                     }
 
                     FetchMode::Window => {
-                        window_line_counter & 8
+                        (window_line_counter & 7) * 2
                     }
                 };
 

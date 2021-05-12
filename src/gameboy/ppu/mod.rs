@@ -531,7 +531,7 @@ impl Ppu {
 
         let mut color_bit = self.pixel_fifo.pop_front().unwrap();
 
-        if self.fifo_scx_skipped < scroll_x & 7 {
+        if !self.fifo_wy_ly_equal && self.fifo_scx_skipped < scroll_x & 7 {
             self.fifo_scx_skipped += 1;
             return false;
         }
