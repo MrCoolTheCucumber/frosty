@@ -1,37 +1,24 @@
-use std::{cell::{Ref, RefCell}, rc::Rc};
+use std::{cell::{Ref, RefCell}, collections::VecDeque, rc::Rc};
+use self::fetcher::Fetcher;
+
 use super::{interupt::InterruptFlag, mmu::Mmu};
 
+mod fetcher;
 
 pub struct Ppu {
     mmu: Rc<RefCell<Mmu>>,
     mode: PpuMode,
     pub frame_buffer: [u8; 160 * 144],
+
     window_internal_line_counter: u8,
+    pixel_fifo: VecDeque<u8>,
+    fifo_fetcher: Fetcher,
+    fifo_scx_skipped: u8,
+    fifo_current_x: usize,
 
     mode_clock_cycles: u64,
     line_clock_cycles: u64,
     frame_clock_cycles: u64
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct Sprite {
-    pub x: u8,
-    pub y: u8,
-    pub tile: u8,
-
-    pub palette: u8,
-    pub xflip: u8,
-    pub yflip: u8,
-    pub priority: u8
-}
-
-impl Sprite {
-    pub fn default() -> Self {
-        Self {
-            x: 0, y: 0, tile: 0, palette: 0,
-            xflip: 0, yflip: 0, priority: 0
-        }
-    }
 }
 
 enum PpuMode {
@@ -78,11 +65,18 @@ pub enum LcdControlFlag {
 
 impl Ppu {
     pub fn new(mmu: Rc<RefCell<Mmu>>) -> Self {
+        let fetcher = Fetcher::new(mmu.clone());
+
         Self {
             mmu,
             mode: PpuMode::OAM,
             frame_buffer: [0; 160 * 144],
+
             window_internal_line_counter: 0,
+            pixel_fifo: VecDeque::new(),
+            fifo_fetcher: fetcher,
+            fifo_scx_skipped: 0,
+            fifo_current_x: 0,
 
             mode_clock_cycles: 0,
             line_clock_cycles: 0,
@@ -133,6 +127,16 @@ impl Ppu {
         }
     }
 
+    fn try_request_stat_interupt(&mut self) {
+        let mut mmu = (*self.mmu).borrow_mut();
+        let lcdc = mmu.io[0x41];
+        let req_stat = false;
+
+        if lcdc & 0b0100_0000 != 0 {
+
+        }
+    }
+
     pub fn tick(&mut self) {
         self.mode_clock_cycles += 1;
         self.line_clock_cycles += 1;
@@ -174,6 +178,7 @@ impl Ppu {
                         self.set_scan_line(0);
                         self.check_ly_eq_lyc();
 
+                        // starting a new frame so lets reset our state
                         self.mode_clock_cycles = 0;
                         self.frame_clock_cycles = 0;
                         self.window_internal_line_counter = 0;
@@ -187,6 +192,14 @@ impl Ppu {
             PpuMode::OAM => {
                 if self.mode_clock_cycles == 80 {
                     self.mode_clock_cycles = 0;
+
+                    self.fifo_fetcher.reset();
+                    self.fifo_fetcher.setup_start_vram();
+
+                    self.fifo_scx_skipped = 0;
+                    self.fifo_current_x = 0;
+                    self.pixel_fifo.clear();
+
                     self.set_mode_lcdc(PpuMode::VRAM);
                     self.mode = PpuMode::VRAM;
                 }
@@ -198,9 +211,9 @@ impl Ppu {
                 // 172-289 clock cycles?
                 // for now lets just say 172
 
-                if self.mode_clock_cycles == 172 {
+                if self.fifo_tick() {
                     self.mode_clock_cycles = 0;
-                    self.draw_scan_line(); // draw line!
+                    //self.draw_scan_line(); // draw line!
                     self.set_mode_lcdc(PpuMode::HBlank);
                     self.mode = PpuMode::HBlank;
                 }
@@ -210,7 +223,12 @@ impl Ppu {
 
     fn check_ly_eq_lyc(&mut self) {
         if self.get_scan_line() == self.get_lyc() && self.lyc_check_enabled() {
-            (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::Stat);
+            let mut mmu = (self.mmu).borrow_mut();
+            mmu.interupts.request_interupt(InterruptFlag::Stat);
+            mmu.io[0x41] = mmu.io[0x41] | 0b0000_0100;
+        } else {
+            let mut mmu = (self.mmu).borrow_mut();
+            mmu.io[0x41] = mmu.io[0x41] & !0b0000_0100;
         }
     }
 
@@ -486,5 +504,36 @@ impl Ppu {
                 }
             }
         }
+    }
+
+    // This will probably return a bool to say we've drawn the whole line,
+    // so we know when to change ppu modes
+    fn fifo_tick(&mut self) -> bool {
+        self.fifo_fetcher.tick(&mut self.pixel_fifo);
+        if self.pixel_fifo.len() <= 8 { return false }
+        
+        let mmu = (*self.mmu).borrow();
+        
+        let ldlc_flags = mmu.io[0x40];
+        let scan_line = mmu.io[0x44];
+        // let scroll_y: u8 = mmu.io[0x42];
+        let scroll_x: u8 = mmu.io[0x43];
+
+        let color_bit = self.pixel_fifo.pop_front().unwrap();
+
+        if self.fifo_scx_skipped < scroll_x & 7 {
+            self.fifo_scx_skipped += 1;
+            return false;
+        } 
+
+        let bg_enabled = ldlc_flags & LcdControlFlag::BGEnable as u8 != 0;
+        if bg_enabled {
+            let color = mmu.bg_palette[color_bit as usize];
+            let fb_offset = (scan_line as usize * 160) + self.fifo_current_x;
+            self.frame_buffer[fb_offset] = color;
+        }
+
+        self.fifo_current_x += 1;
+        return self.fifo_current_x == 160 
     }
 }

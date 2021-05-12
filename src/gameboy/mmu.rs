@@ -1,4 +1,4 @@
-use super::{cartridge::Cartridge, input::Input, interupt::Interupt, ppu::Sprite, timer::Timer};
+use super::{cartridge::Cartridge, input::Input, interupt::Interupt, timer::Timer};
 
 const PALETTE: [u8; 4] = [
     255, 192, 96, 0
@@ -18,7 +18,6 @@ pub struct Mmu {
 
     pub sprite_table: [u8; 0xA0],
     pub sprite_palette: [[u8; 4]; 2],
-    pub obj_table: [Sprite; 40],
 
     pub tileset: [[[u8; 8]; 8]; 384],
     pub bg_palette: [u8; 4]
@@ -39,7 +38,6 @@ impl Mmu {
 
             sprite_table: [0; 0xA0],
             sprite_palette: [[0; 4]; 2],
-            obj_table: [Sprite::default(); 40],
 
             // ppu
             tileset: [[[0; 8]; 8]; 384],
@@ -70,55 +68,6 @@ impl Mmu {
         mmu.write_byte(0xFF49, 0xFF);
 
         mmu
-    }
-
-    fn update_tileset(&mut self, addr: u16) {
-        let effective_addr = addr - 0x8000;
-        // 384 maximum total tiles
-        // 256 is mem spaces are set to overlap fully
-        // each tile ocupies 16 bytes, therefore 16 address spaces
-        
-        let tile = effective_addr / 16;
-        // let y = (effective_addr % 16) / 2; 
-        let y = ((addr >> 1) & 7) as u8;
-
-        for x in 0..8 {
-            let bit_idx: u8 = 1 << (7 - x);
-
-            let color_lower; 
-            if self.gpu_vram[(addr & 0x1FFE) as usize] & bit_idx > 0 
-                { color_lower = 1 } else { color_lower = 0 };
-
-            let color_higher;
-            if self.gpu_vram[((addr & 0x1FFE) + 1) as usize] & bit_idx > 0 
-                { color_higher = 2 } else { color_higher = 0 };
-
-            self.tileset[tile as usize][y as usize][x as usize] = color_lower + color_higher;
-        }
-    }
-
-    fn update_sprite(&mut self, sprite_table_index: u16, val: u8) {
-        // divide index by 4
-        let obj_table_index = (sprite_table_index >> 2) as usize;
-        if obj_table_index < 40 {
-            match obj_table_index & 3 {
-                0 => self.obj_table[obj_table_index].y = val,
-
-                1 => self.obj_table[obj_table_index].x = val,
-
-                2 => self.obj_table[obj_table_index].tile = val,
-
-                3 => {
-                    let obj = &mut self.obj_table[obj_table_index];
-                    obj.palette = if (val & 0x10) != 0 {1} else {0};
-                    obj.xflip =   if (val & 0x20) != 0 {1} else {0};
-                    obj.yflip =   if (val & 0x40) != 0 {1} else {0};
-                    obj.priority= if (val & 0x80) != 0 {1} else {0};
-                }
-
-                _ => unreachable!()
-            }
-        }
     }
 
     pub fn read_byte(&self, addr: u16) -> u8 {
@@ -222,9 +171,6 @@ impl Mmu {
             // vram
             0x8000 | 0x9000 => {
                 self.gpu_vram[(addr - 0x8000) as usize] = val;
-                if addr < 0x97FF { 
-                    self.update_tileset(addr); 
-                }
             }
 
             0xA000 | 0xB000 => {
@@ -250,7 +196,6 @@ impl Mmu {
                     0x0E00 => {
                         if addr < 0xFEA0 {
                             self.sprite_table[(addr - 0xFE00) as usize] = val;
-                            self.update_sprite(addr - 0xFE00, val);
                         }
 
                         // "Empty but usable for io"?
