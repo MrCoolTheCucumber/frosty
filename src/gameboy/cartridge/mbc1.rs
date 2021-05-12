@@ -90,6 +90,6 @@ impl Cartridge for MBC1 {
     }
 
     fn write_ram(&mut self, addr: u16, value: u8) {
-        todo!()
+        // todo!()
     }
 }

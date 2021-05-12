@@ -12,6 +12,7 @@ https://github.com/Powerlated/TurtleTests
 ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycles before the interrupt takes place?
 
 # PPU
+- https://gbdev.io/pandocs/#pixel-fifo
 - https://hacktixme.ga/GBEDG/ppu/#:~:text=The%20PPU%20(which%20stands%20for,beats%20the%20CPU%20by%20far
 - https://github.com/Gekkio/mooneye-gb/tree/2d52008228557f9e713545e702d5b7aa233d09bb/tests/acceptance/ppu
 - https://gbdev.io/pandocs/#int-48-stat-interrupt RISING EDGE, need to store prev val?

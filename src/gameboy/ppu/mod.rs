@@ -1,5 +1,5 @@
 use std::{cell::{Ref, RefCell}, collections::VecDeque, rc::Rc};
-use self::fetcher::Fetcher;
+use self::fetcher::{FetchMode, Fetcher};
 
 use super::{interupt::InterruptFlag, mmu::Mmu};
 
@@ -14,6 +14,7 @@ pub struct Ppu {
     pixel_fifo: VecDeque<u8>,
     fifo_fetcher: Fetcher,
     fifo_scx_skipped: u8,
+    fifo_wy_ly_equal: bool,
     fifo_current_x: usize,
 
     mode_clock_cycles: u64,
@@ -77,6 +78,7 @@ impl Ppu {
             fifo_fetcher: fetcher,
             fifo_scx_skipped: 0,
             fifo_current_x: 0,
+            fifo_wy_ly_equal: false,
 
             mode_clock_cycles: 0,
             line_clock_cycles: 0,
@@ -124,16 +126,6 @@ impl Ppu {
         match (ldlc_flags & LcdControlFlag::WindowTileMapAddress as u8) != 0 {
             true => 0x9C00,
             false => 0x9800
-        }
-    }
-
-    fn try_request_stat_interupt(&mut self) {
-        let mut mmu = (*self.mmu).borrow_mut();
-        let lcdc = mmu.io[0x41];
-        let req_stat = false;
-
-        if lcdc & 0b0100_0000 != 0 {
-
         }
     }
 
@@ -194,11 +186,11 @@ impl Ppu {
                     self.mode_clock_cycles = 0;
 
                     self.fifo_fetcher.reset();
-                    self.fifo_fetcher.setup_start_vram();
 
                     self.fifo_scx_skipped = 0;
                     self.fifo_current_x = 0;
                     self.pixel_fifo.clear();
+                    self.fifo_wy_ly_equal = false;
 
                     self.set_mode_lcdc(PpuMode::VRAM);
                     self.mode = PpuMode::VRAM;
@@ -509,29 +501,51 @@ impl Ppu {
     // This will probably return a bool to say we've drawn the whole line,
     // so we know when to change ppu modes
     fn fifo_tick(&mut self) -> bool {
-        self.fifo_fetcher.tick(&mut self.pixel_fifo);
-        if self.pixel_fifo.len() <= 8 { return false }
-        
         let mmu = (*self.mmu).borrow();
         
         let ldlc_flags = mmu.io[0x40];
         let scan_line = mmu.io[0x44];
-        // let scroll_y: u8 = mmu.io[0x42];
         let scroll_x: u8 = mmu.io[0x43];
 
-        let color_bit = self.pixel_fifo.pop_front().unwrap();
+        let window_y = mmu.io[0x4A];
+        let window_x = mmu.io[0x4B].wrapping_sub(7);
+
+        let window_enabled = ldlc_flags & LcdControlFlag::WindowEnable as u8 != 0;
+        let start_drawing_window = scan_line >= window_y && window_x == self.fifo_current_x as u8;
+
+        // check if we need to switch bg/wd fifo to window mode
+        if !self.fifo_wy_ly_equal && window_enabled && start_drawing_window {
+            self.fifo_wy_ly_equal = true;
+            self.window_internal_line_counter += 1;
+
+            self.fifo_fetcher.mode = FetchMode::Window;
+            self.fifo_fetcher.cycle = 0;
+            self.fifo_fetcher.tile_counter = 0;
+
+            self.pixel_fifo.clear();
+        }
+
+        let window_line_counter = self.window_internal_line_counter.wrapping_sub(1);
+        self.fifo_fetcher.tick(&mut self.pixel_fifo, window_line_counter);
+        if self.pixel_fifo.len() <= 8 { return false }
+
+        let mut color_bit = self.pixel_fifo.pop_front().unwrap();
 
         if self.fifo_scx_skipped < scroll_x & 7 {
             self.fifo_scx_skipped += 1;
             return false;
-        } 
-
-        let bg_enabled = ldlc_flags & LcdControlFlag::BGEnable as u8 != 0;
-        if bg_enabled {
-            let color = mmu.bg_palette[color_bit as usize];
-            let fb_offset = (scan_line as usize * 160) + self.fifo_current_x;
-            self.frame_buffer[fb_offset] = color;
         }
+
+        // if bg isn't enabled, and we're drawing the bg, then set color bit to 0
+        let bg_enabled = ldlc_flags & LcdControlFlag::BGEnable as u8 != 0;
+        if !bg_enabled && !self.fifo_wy_ly_equal{
+            color_bit = 0;
+        }
+
+        let color = mmu.bg_palette[color_bit as usize];
+        let fb_offset = (scan_line as usize * 160) + self.fifo_current_x;
+
+        self.frame_buffer[fb_offset] = color;
 
         self.fifo_current_x += 1;
         return self.fifo_current_x == 160 

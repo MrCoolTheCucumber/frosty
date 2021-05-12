@@ -25,7 +25,7 @@ impl GBState {
     pub fn new(_ctx: &mut Context) -> Self {
         let rom_path = match std::env::consts::OS {
             "linux" => "/home/ruben/dev/gb-rs/tetris.gb",
-            "windows" => "I:\\Dev\\gb-rs\\dmg-acid2.gb",
+            "windows" => "I:\\Dev\\gb-rs\\sm.gb",
             _ => panic!("wat?")
         };
 
