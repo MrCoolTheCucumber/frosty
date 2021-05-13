@@ -1,4 +1,4 @@
-use super::{cartridge::Cartridge, input::Input, interupt::Interupt, timer::Timer};
+use super::{cartridge::Cartridge, input::Input, interupt::{InterruptFlag, Interupt}, timer::Timer};
 
 const PALETTE: [u8; 4] = [
     255, 192, 96, 0
@@ -222,6 +222,13 @@ impl Mmu {
 
                         else if addr == 0xFF44 {
                             // Do nothing, this is read only ?
+                        }
+
+                        else if addr == 0xFF45 {
+                            self.io[0x45] = val;
+                            if self.io[0x44] == val {
+                                self.interupts.request_interupt(InterruptFlag::Stat);
+                            }
                         }
 
                         else if addr == 0xFF46 {

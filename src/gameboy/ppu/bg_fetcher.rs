@@ -8,7 +8,7 @@ pub enum FetchMode {
     Window
 }
 
-pub struct Fetcher {
+pub struct BgFetcher {
     mmu: Rc<RefCell<Mmu>>,
     pub mode: FetchMode,
 
@@ -23,7 +23,7 @@ pub struct Fetcher {
     high_data: u8
 }
 
-impl Fetcher {
+impl BgFetcher {
     pub fn new(mmu: Rc<RefCell<Mmu>>) -> Self {
         Self {
             mmu,
@@ -57,6 +57,7 @@ impl Fetcher {
     pub fn tick(&mut self, pixel_fifo: &mut VecDeque<u8>, window_line_counter: u8) {
         self.cycle += 1;
 
+        // https://gbdev.io/pandocs/#fifo-pixel-fetcher
         match self.cycle {
             1 | 3 | 5 | 7 => { } // NOP 
 
@@ -118,10 +119,10 @@ impl Fetcher {
 
             6 => {
                 // fetch high byte
-                // the first time we reach here we go back to the start
+                // the first time we reach here we go back to step 1
                 if !self.reset_on_first_step_3 {
                     self.reset_on_first_step_3 = true;
-                    self.cycle = 0;
+                    self.cycle = 1;
                 }
 
                 let mmu = (*self.mmu).borrow();
@@ -130,7 +131,7 @@ impl Fetcher {
 
             8..=u8::MAX => {
                 // push data to the fifo if there are <= 8 items in it
-                if pixel_fifo.len() <= 8 {
+                if pixel_fifo.len() == 0 {
                     for i in 0..8 {
                         let bx = 7 - i;
                         let color_bit = ((self.low_data & (1 << bx)) >> bx) | 
@@ -138,7 +139,7 @@ impl Fetcher {
                         pixel_fifo.push_back(color_bit);
                     }
 
-                    self.cycle = 0;
+                    self.cycle = 1;
                     self.tile_counter += 1;
                 }
             }
