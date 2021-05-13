@@ -41,10 +41,10 @@ impl Cartridge for ROM {
     // This cart has no ram?
 
     fn read_ram(&self, _addr: u16) -> u8 {
-        unimplemented!()
+        0
     }
 
     fn write_ram(&mut self, _addr: u16, _value: u8) {
-        unimplemented!()
+        
     }
 }

@@ -65,8 +65,6 @@ impl Cartridge for MBC1 {
             0x2000 | 0x3000 => {
                 self.current_rom_bank = (self.current_rom_bank & 0b0110_0000) + value as usize;
                 if self.current_rom_bank == 0 { self.current_rom_bank = 1 }
-
-                println!("Switched to bank {}!", self.current_rom_bank);
             }
 
             0x4000 | 0x5000 => {
@@ -92,6 +90,6 @@ impl Cartridge for MBC1 {
     }
 
     fn write_ram(&mut self, addr: u16, value: u8) {
-        todo!()
+        // todo!()
     }
 }
