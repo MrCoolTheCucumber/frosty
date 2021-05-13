@@ -395,7 +395,7 @@ impl Ppu {
         // sprite fifo handling
         if self.fifo_sprite_fetch {
             let sprite = self.fifo_sprite_buffer_peek.as_ref().unwrap();
-            self.sprite_fetcher.tick(&mut self.sprite_fifo, &sprite, self.fifo_current_x as u8);
+            self.sprite_fetcher.tick(&mut self.sprite_fifo, &sprite);
             if self.sprite_fetcher.cycle == 6 {
                 self.fifo_sprite_fetch = false;
                 self.fifo_sprite_buffer_peek = self.fifo_sprite_buffer.pop_front();

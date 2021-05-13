@@ -33,7 +33,7 @@ impl SpriteFetcher {
         self.data_high = 0;
     }
 
-    pub fn tick(&mut self, sprite_fifo: &mut VecDeque<FifoPixel>, sprite: &Sprite, current_x: u8) {
+    pub fn tick(&mut self, sprite_fifo: &mut VecDeque<FifoPixel>, sprite: &Sprite) {
         self.cycle += 1;
 
         match self.cycle {
