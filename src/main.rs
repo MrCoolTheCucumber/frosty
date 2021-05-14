@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-mod gameboy;
+pub mod gameboy;
 
 use std::{thread, time::Duration};
 
