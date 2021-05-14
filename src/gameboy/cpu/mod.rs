@@ -39,6 +39,7 @@ pub struct Cpu {
     pub stopped: bool,
     pub halted: bool,
     pub halted_waiting_for_interupt_pending: bool,
+    halt_bug: bool,
 
     debug: bool,
     log: Option<File>
@@ -93,6 +94,7 @@ impl Cpu {
             stopped: false,
             halted: false,
             halted_waiting_for_interupt_pending: false,
+            halt_bug: false,
 
             debug: false,
             log: file
@@ -476,6 +478,11 @@ impl Cpu {
 
         if self.instruction.is_none() {
             let opcode = self.fetch();
+            if self.halt_bug {
+                self.pc -= 1;
+                self.halt_bug = false;
+            }
+
             let instruction = match opcode {
                 0xCB => disassemble_cb_prefix_op(self.fetch()),
                 _ => disassemble(opcode)

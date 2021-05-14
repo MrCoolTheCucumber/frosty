@@ -1,10 +1,10 @@
-use std::{fs::File, io::Read};
+use std::{fs::File, io::Read, time::{SystemTime, UNIX_EPOCH}};
 
 use super::Cartridge;
 
 
 pub struct MBC3 {
-    is_ram_enabled: bool,
+    is_ram_rtc_enabled: bool,
     num_rom_banks: u16,
     num_ram_banks: u16,
 
@@ -14,7 +14,12 @@ pub struct MBC3 {
     mode: u8, // 0 = ROM 1 = RAM
 
     rom_banks: Vec<[u8; 0x4000]>,
-    ram_banks: Vec<[u8; 0x2000]>
+    ram_banks: Vec<[u8; 0x2000]>,
+
+    rtc_regs: [u8; 5],
+    rtc_banked: bool,
+
+    prev_latch_val: u8
 }
 
 impl MBC3 {
@@ -42,7 +47,7 @@ impl MBC3 {
         }
 
         Self {
-            is_ram_enabled: false,
+            is_ram_rtc_enabled: false,
             num_rom_banks,
             num_ram_banks,
 
@@ -50,8 +55,12 @@ impl MBC3 {
             current_ram_bank: 0,
             mode: 0,
 
+            rtc_regs: [0; 5],
+            rtc_banked: false,
+
             rom_banks,
-            ram_banks
+            ram_banks,
+            prev_latch_val: 204 // random val
         }
     }
 }
@@ -74,7 +83,7 @@ impl Cartridge for MBC3 {
     fn write_rom(&mut self, addr: u16, value: u8) {
         match addr & 0xF000 {
             0x0000 | 0x1000 => {
-                self.is_ram_enabled = (value & 0x0F) == 0x0A;
+                self.is_ram_rtc_enabled = (value & 0x0F) == 0x0A;
             }
 
             0x2000 | 3000 => {
@@ -87,11 +96,23 @@ impl Cartridge for MBC3 {
             0x4000 | 0x5000 => {
                 if value <= 0x03 {
                     self.current_ram_bank = value as usize;
+                    self.rtc_banked = false;
                 }
+                else if value >= 0x08 && value <= 0x0C {
+                    self.rtc_banked = true;
+                } 
             }
 
             0x6000 | 0x7000 => {
-                // self.mode = value & 1;
+                if self.prev_latch_val == 0x00 && value == 0x01 {
+                    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+                    
+                    self.rtc_regs[0] = (now.as_secs() % 60) as u8;
+                    self.rtc_regs[1] = ((now.as_secs() / 60) % 60) as u8;
+                    self.rtc_regs[2] = (((now.as_secs() / 60) / 60) % 24) as u8;
+                }
+                
+                self.prev_latch_val = value;
             }
 
             _ => panic!()
@@ -99,13 +120,19 @@ impl Cartridge for MBC3 {
     }
 
     fn read_ram(&self, addr: u16) -> u8 {
-        if !self.is_ram_enabled { return 0xFF; }
+        if !self.is_ram_rtc_enabled { return 0xFF; }
+
+        if self.rtc_banked {
+            return self.rtc_regs[(addr - 0x08) as usize];
+        }
 
         self.ram_banks[self.current_ram_bank][addr as usize]
     }
 
     fn write_ram(&mut self, addr: u16, value: u8) {
-        if !self.is_ram_enabled { return }
+        if !self.is_ram_rtc_enabled { return }
+
+        // what to do if rtc is banked?
 
         self.ram_banks[self.current_ram_bank][addr as usize] = value;
     }

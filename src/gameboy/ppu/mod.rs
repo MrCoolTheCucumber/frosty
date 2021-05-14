@@ -259,6 +259,8 @@ impl Ppu {
                     // prob not as oam technically isn't writable during
                     // this time?
                     self.fifo_sprite_buffer.clear();
+                    self.fifo_sprite_buffer_peek = None;
+
                     let mut sprites = Vec::new();
 
                     {

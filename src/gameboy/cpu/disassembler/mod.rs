@@ -604,8 +604,10 @@ fn dissassemble_x_1(y: u8, z: u8, _p: u8, _q: u8, opcode: u8) -> Instruction {
             else {
                 if mmu.interupts.enable & mmu.interupts.flags != 0 {
                     // IME not set, interupt pending
-
-                    panic!("halt bug not implemented!");
+                    // continue execution, but the next byte is read twice
+                    // or in other words, after the next byte is read the pc gets
+                    // decremented back to what it was
+                    cpu.halt_bug = true;
                 } 
                 else {
                     // IME not set, no interupt pending

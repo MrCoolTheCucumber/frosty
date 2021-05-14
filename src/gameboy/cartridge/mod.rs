@@ -74,6 +74,7 @@ pub fn create(rom_path: &str) -> Box<dyn Cartridge> {
 
     match cartridge_type_code {
         0x00 => Box::new(ROM::new(file, rom_bank_0)),
+        
         0x01 | 0x02 | 0x03 => {
             println!("MBC1 cart created!");
             Box::new(MBC1::new(
@@ -84,7 +85,7 @@ pub fn create(rom_path: &str) -> Box<dyn Cartridge> {
                 num_ram_banks
             ))
         }
-
+        
         0x0F..=0x13 => {
             println!("MBC3 cart created!");
             Box::new(MBC3::new(

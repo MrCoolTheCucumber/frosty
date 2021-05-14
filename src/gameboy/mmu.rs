@@ -238,6 +238,8 @@ impl Mmu {
                                 let src_val = self.read_byte(source_addr + i);
                                 self.write_byte(0xFE00 + i, src_val);
                             }
+
+                            self.io[0x46] = val;
                         }
 
                         else if addr == 0xFF47 {
