@@ -1,18 +1,15 @@
 use std::{fs::File, io::Read};
 
-use crate::gameboy::cartridge::{mbc1::MBC1, rom::ROM};
-
+use crate::gameboy::cartridge::{mbc1::MBC1, mbc3::MBC3, mbc5::MBC5, rom::ROM};
 
 // https://gbdev.io/pandocs/#the-cartridge-header
 // http://marc.rawer.de/Gameboy/Docs/GBCPUman.pdf Section 2.6 (page 13)
 
-// pub struct Cartridge {
-//     rom_bank_n: Vec<[u8; 0x4000]>,
-//     rom_bank_index: usize
-// }
 
-pub mod mbc1;
 pub mod rom;
+pub mod mbc1;
+pub mod mbc3;
+pub mod mbc5;
 
 pub trait Cartridge {
     fn read_rom(&self, addr: u16) -> u8;
@@ -84,6 +81,28 @@ pub fn create(rom_path: &str) -> Box<dyn Cartridge> {
                 rom_bank_0,
                 cartridge_type_code, 
                 num_rom_banks, 
+                num_ram_banks
+            ))
+        }
+
+        0x0F..=0x13 => {
+            println!("MBC3 cart created!");
+            Box::new(MBC3::new(
+                file,
+                rom_bank_0,
+                cartridge_type_code,
+                num_rom_banks,
+                num_ram_banks
+            ))
+        }
+
+        0x1A..=0x1E => {
+            println!("MBC5 cart created!");
+            Box::new(MBC5::new(
+                file,
+                rom_bank_0,
+                cartridge_type_code,
+                num_rom_banks,
                 num_ram_banks
             ))
         }
