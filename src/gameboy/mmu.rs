@@ -126,8 +126,13 @@ impl Mmu {
                             return self.input.read_joyp();
                         }
 
-                        if addr == 0xFF0F {
+                        else if addr == 0xFF0F {
                             return self.interupts.flags
+                        }
+
+                        // LCD STAT
+                        else if addr == 0xFF41 {
+                            return 0b1000_0000 | self.io[0x41];
                         }
                       
                         else if addr == 0xFFFF {
@@ -223,7 +228,7 @@ impl Mmu {
                             self.interupts.flags = val;
                         }
 
-                        // LCD STAT
+                        // LCD CONTROL
                         else if addr == 0xFF40 {
                             self.io[0x40] = val;
                             
@@ -232,6 +237,11 @@ impl Mmu {
                                 // reset ly to 0
                                 self.io[0x44] = 0;
                             }
+                        }
+
+                        else if addr == 0xFF41 {
+                            let stat = self.io[0x41];
+                            self.io[0x41] = (stat & 0b1000_0111) | (val & 0b0111_1000);
                         }
 
                         else if addr == 0xFF44 {

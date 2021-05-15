@@ -17,7 +17,6 @@ pub struct Ppu {
     window_internal_line_counter: u8,
     bg_fifo: VecDeque<u8>,
     sprite_fifo: VecDeque<FifoPixel>,
-    sprite_fifo_cycle: u8,
 
     bg_fetcher: BgFetcher,
     sprite_fetcher: SpriteFetcher,
@@ -25,10 +24,7 @@ pub struct Ppu {
     fifo_scx_skipped: u8,
     fifo_wy_ly_equal: bool,
     fifo_current_x: usize,
-
     fifo_sprite_fetch: bool,
-    fifo_sprite_fetch_cycle: u8,
-
     reset: bool,
 
     mode_clock_cycles: u64,
@@ -118,7 +114,6 @@ impl Ppu {
             window_internal_line_counter: 0,
             bg_fifo: VecDeque::new(),
             sprite_fifo: VecDeque::new(),
-            sprite_fifo_cycle: 0,
 
             bg_fetcher,
             sprite_fetcher,
@@ -126,10 +121,7 @@ impl Ppu {
             fifo_scx_skipped: 0,
             fifo_current_x: 0,
             fifo_wy_ly_equal: false,
-
             fifo_sprite_fetch: false,
-            fifo_sprite_fetch_cycle: 0,
-
             reset: false,
 
             mode_clock_cycles: 0,
@@ -215,7 +207,7 @@ impl Ppu {
                 self.mode = PpuMode::HBlank;
                 self.frame_buffer = [220; 160 * 144];
                 self.reset = true;
-                mmu.io[0x41] = mmu.io[0x41] & & 0b11111100;
+                mmu.io[0x41] = (mmu.io[0x41] & 0b11111100) | 0b0000_0010;
                 return;
             }  
         }
@@ -224,7 +216,9 @@ impl Ppu {
             self.reset = false;
             self.mode = PpuMode::OAM;
             let mut mmu = (*self.mmu).borrow_mut();
-            mmu.io[0x41] = (mmu.io[0x41] & & 0b11111100) + PpuMode::OAM as u8;
+            // So the mode in the stat flag should be zero after reset 
+            // even though the ppu is actually in mode 2? 🤔
+            mmu.io[0x41] = mmu.io[0x41] & 0b11111100;
         }
 
         self.mode_clock_cycles += 1;
