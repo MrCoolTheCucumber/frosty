@@ -27,14 +27,14 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - [x] instr_timing
 - [ ] halt_bug
 
-- [x] Hacktix scribbltests
-    - [x] fairylake
-    - [x] lycscx
-    - [x] lycscy
-    - [x] palettely
-    - [x] scxly
-    - [x] statcount
-    - [x] winpos
+### Hacktix scribbltests
+- [x] fairylake
+- [x] lycscx
+- [x] lycscy
+- [x] palettely
+- [x] scxly
+- [x] statcount
+- [x] winpos
 
 ### DMG-Acid2
 
