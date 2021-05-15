@@ -91,10 +91,7 @@ impl SpriteFetcher {
                         (if self.data_high & xbit != 0 { 2 } else { 0 });
 
                     let px_data = FifoPixel {
-                        is_sprite: true,
                         belowbg: sprite.belowbg,
-                        sprite_index: sprite.index,
-                        bg_wd_color_bit: 0,
                         sprite_color_bit: colnr,
                         sprite_palette: sprite.sprite_palette 
                     };

@@ -33,7 +33,6 @@ pub struct Ppu {
 }
 
 pub struct Sprite {
-    index: u8,
     y: u8,
     x: u8,
     tile_num: u16,
@@ -45,14 +44,9 @@ pub struct Sprite {
 }
 
 pub struct FifoPixel {
-    is_sprite: bool,
-    
-    sprite_index: u8, // prob not needed?
     sprite_palette: usize,
     sprite_color_bit: u8,
-    belowbg: bool,
-
-    bg_wd_color_bit: u8
+    belowbg: bool
 }
 
 #[derive(Clone, Copy)]
@@ -306,7 +300,6 @@ impl Ppu {
                             let belowbg: bool = flags & (1 << 7) != 0;
 
                             let sprite = Sprite {
-                                index: i,
                                 x: sprite_x,
                                 y: sprite_y,
                                 tile_num,
@@ -402,12 +395,6 @@ impl Ppu {
         else {
             mmu.read_byte(addr) as u16
         }
-    }
-
-    // given the location of a 8*8 chunk of the 32*32 bg map
-    // calculate the offset in tiles from the 0th tile in the map
-    fn get_bg_map_offset(tile_y: u8, tile_x: u8) -> u16 {
-        (tile_y as u16 * 32) + tile_x as u16
     }
 
     // This will probably return a bool to say we've drawn the whole line,
