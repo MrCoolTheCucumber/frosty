@@ -40,6 +40,7 @@ pub struct Cpu {
     pub halted: bool,
     pub halted_waiting_for_interupt_pending: bool,
     halt_bug: bool,
+    ei_delay: bool,
 
     debug: bool,
     log: Option<File>
@@ -95,6 +96,7 @@ impl Cpu {
             halted: false,
             halted_waiting_for_interupt_pending: false,
             halt_bug: false,
+            ei_delay: false,
 
             debug: false,
             log: file
@@ -487,6 +489,11 @@ impl Cpu {
                 0xCB => disassemble_cb_prefix_op(self.fetch()),
                 _ => disassemble(opcode)
             };
+
+            if self.ei_delay {
+                self.ei_delay = false;
+                (*self.mmu).borrow_mut().interupts.enable_master();
+            }
 
             if false {
                 let mut instr_human_readable = instruction.human_readable.clone();
