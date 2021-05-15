@@ -28,7 +28,7 @@ impl Input {
             a: 1,
             b: 1,
 
-            column_line: 0
+            column_line: 0x30
 
         }
     }
@@ -38,7 +38,7 @@ impl Input {
     }
 
     pub fn read_joyp(&self) -> u8 {
-        match self.column_line {
+        let joyp = match self.column_line {
             // 4th bit 
             0x10 => {
                 let mut result = 0 | self.a;
@@ -56,6 +56,7 @@ impl Input {
                 result = result | (self.down << 3);
                 result
             }
+
             // 4th & 5th
             0x30 => {
                 self.a | (self.b << 1) | (self.select << 2) | (self.start << 3) |
@@ -63,7 +64,9 @@ impl Input {
             }
 
             _ => 0
-        }
+        };
+
+        joyp | 0b1100_0000
     }
 
     pub fn key_down(&mut self, code: KeyCode) -> bool {

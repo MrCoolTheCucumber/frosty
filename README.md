@@ -71,18 +71,9 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
     - [x] tima_write_reloading
     - [x] tma_write_reloading
 - [ ] add_sp_e_timing
-- [ ] boot_div-S
-- [ ] boot_div-dmg0
-- [ ] boot_div-dmgABCmgb
-- [ ] boot_div2-S
-- [ ] boot_hwio-S
-- [ ] boot_hwio-dmg0
-- [ ] boot_hwio-dmgABCmgb
-- [ ] boot_regs-dmg0
-- [ ] boot_regs-dmgABC
-- [ ] boot_regs-mgb
-- [ ] boot_regs-sgb
-- [ ] boot_regs-sgb2
+- [x] boot_div-dmgABCmgb
+- [ ] boot_hwio-dmgABCmgb (might require stat ir blocking?)
+- [x] boot_regs-dmgABC
 - [ ] call_cc_timing
 - [ ] call_cc_timing2
 - [ ] call_timing

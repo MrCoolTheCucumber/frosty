@@ -127,7 +127,7 @@ impl Mmu {
                         }
 
                         else if addr == 0xFF0F {
-                            return self.interupts.flags
+                            return 0b1110_0000 | (self.interupts.flags & 0b0001_1111);
                         }
 
                         // LCD STAT
