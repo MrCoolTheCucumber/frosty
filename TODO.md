@@ -1,6 +1,8 @@
 # TODO
-- Review all CC Ops for correct timing, write a rust test that goes through the opcode timing table in discord?!
 - Improve disassembler code. E.g. replace blank closures with func that inserts a delay instruction step?
+- Implement LCD Control bit 7 behaviour
+- Am I handling interupts in the correct order if more than 1 are valid to fire?
+- really need start irq blocking implemented probs
 
 - Switch to SDL2/OpenGL? http://nercury.github.io/rust/opengl/tutorial/2018/02/08/opengl-in-rust-from-scratch-01-window.html
 

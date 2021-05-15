@@ -37,7 +37,10 @@ impl Mmu {
             zero_page: [0; 0x80],
 
             sprite_table: [0; 0xA0],
-            sprite_palette: [[0; 4]; 2],
+            sprite_palette: [
+                [PALETTE[0], PALETTE[1], PALETTE[2], PALETTE[3]],
+                [PALETTE[0], PALETTE[1], PALETTE[2], PALETTE[3]]
+            ],
 
             // ppu
             tileset: [[[0; 8]; 8]; 384],
@@ -220,6 +223,17 @@ impl Mmu {
                             self.interupts.flags = val;
                         }
 
+                        // LCD STAT
+                        else if addr == 0xFF40 {
+                            self.io[0x40] = val;
+                            
+                            // is the lcd set to off?
+                            if val >> 7 == 0 {
+                                // reset ly to 0
+                                self.io[0x44] = 0;
+                            }
+                        }
+
                         else if addr == 0xFF44 {
                             // Do nothing, this is read only ?
                         }
@@ -246,18 +260,24 @@ impl Mmu {
                             for i in 0..4 {
                                 self.bg_palette[i] = PALETTE[((val >> (i * 2)) & 3) as usize];
                             }
+
+                            self.io[0x47] = val;
                         }
 
                         else if addr == 0xFF48 {
                             for i in 0..4 {
                                 self.sprite_palette[0][i] = PALETTE[((val >> (i * 2)) & 3) as usize];
                             }
+
+                            self.io[0x48] = val;
                         }
 
                         else if addr == 0xFF49 {
                             for i in 0..4 {
                                 self.sprite_palette[1][i] = PALETTE[((val >> (i * 2)) & 3) as usize];
                             }
+
+                            self.io[0x49] = val;
                         }
 
                         else if addr >= 0xFF00 && addr <= 0xFF7F {

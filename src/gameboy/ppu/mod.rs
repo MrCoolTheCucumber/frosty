@@ -29,6 +29,8 @@ pub struct Ppu {
     fifo_sprite_fetch: bool,
     fifo_sprite_fetch_cycle: u8,
 
+    reset: bool,
+
     mode_clock_cycles: u64,
     line_clock_cycles: u64,
     frame_clock_cycles: u64
@@ -128,6 +130,8 @@ impl Ppu {
             fifo_sprite_fetch: false,
             fifo_sprite_fetch_cycle: 0,
 
+            reset: false,
+
             mode_clock_cycles: 0,
             line_clock_cycles: 0,
             frame_clock_cycles: 0
@@ -202,6 +206,27 @@ impl Ppu {
     }
 
     pub fn tick(&mut self) {
+        {
+            let mut mmu = (*self.mmu).borrow_mut();
+            if mmu.io[0x40] >> 7 == 0 {
+                self.mode_clock_cycles = 0;
+                self.line_clock_cycles = 0;
+                self.frame_clock_cycles = 0;
+                self.mode = PpuMode::HBlank;
+                self.frame_buffer = [220; 160 * 144];
+                self.reset = true;
+                mmu.io[0x41] = mmu.io[0x41] & & 0b11111100;
+                return;
+            }  
+        }
+
+        if self.reset {
+            self.reset = false;
+            self.mode = PpuMode::OAM;
+            let mut mmu = (*self.mmu).borrow_mut();
+            mmu.io[0x41] = (mmu.io[0x41] & & 0b11111100) + PpuMode::OAM as u8;
+        }
+
         self.mode_clock_cycles += 1;
         self.line_clock_cycles += 1;
         self.frame_clock_cycles += 1;
