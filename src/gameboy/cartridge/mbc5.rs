@@ -1,6 +1,6 @@
-use std::{fs::File, io::Read};
+use std::{fs::File, io::{Read, Write}, path::{Path, PathBuf}};
 
-use super::Cartridge;
+use super::{Cartridge, get_save_file_path_from_rom_path, try_read_save_file};
 
 
 pub struct MBC5 {
@@ -14,12 +14,15 @@ pub struct MBC5 {
     mode: u8, // 0 = ROM 1 = RAM
 
     rom_banks: Vec<[u8; 0x4000]>,
-    ram_banks: Vec<[u8; 0x2000]>
+    ram_banks: Vec<[u8; 0x2000]>,
+
+    save_file_path: PathBuf
 }
 
 impl MBC5 {
     pub fn new(
         mut file: File,
+        path: &Path,
         rom_bank_0: [u8; 0x4000],
         cartridge_type_code: u8, 
         num_rom_banks: u16, 
@@ -36,10 +39,11 @@ impl MBC5 {
 
         let mut ram_banks = Vec::new();
 
-        for _ in 0..num_ram_banks {
-            let bank = [0; 0x2000];
-            ram_banks.push(bank);
-        }
+        let save_file_path = get_save_file_path_from_rom_path(path);
+
+        // try to open save file
+        let sav_file = File::open(&save_file_path);
+        try_read_save_file(sav_file, num_ram_banks, &mut ram_banks);
 
         Self {
             is_ram_enabled: false,
@@ -51,8 +55,22 @@ impl MBC5 {
             mode: 0,
 
             rom_banks,
-            ram_banks
+            ram_banks,
+
+            save_file_path
         }
+    }
+}
+
+impl Drop for MBC5 {
+    fn drop(&mut self) {
+        // create save file
+        let mut sav_file = File::create(&self.save_file_path).unwrap();
+        for bank in &self.ram_banks {
+            sav_file.write_all(bank).unwrap();
+        }
+        println!("Save file written!");
+
     }
 }
 

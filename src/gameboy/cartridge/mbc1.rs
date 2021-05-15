@@ -4,8 +4,6 @@ use super::Cartridge;
 
 pub struct MBC1 {
     is_ram_enabled: bool,
-    num_rom_banks: u16,
-    num_ram_banks: u16,
     current_rom_bank: usize,
     mode: u8, // 0 = ROM 1 = RAM
 
@@ -31,8 +29,6 @@ impl MBC1 {
 
         Self {
             is_ram_enabled: false,
-            num_rom_banks,
-            num_ram_banks,
             current_rom_bank: 1,
             mode: 0,
 
