@@ -87,8 +87,8 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - [ ] call_cc_timing2
 - [ ] call_timing
 - [ ] call_timing2
-- [ ] di_timing
-- [ ] div_timing
+- [x] di_timing
+- [x] div_timing
 - [x] ei_sequence
 - [x] ei_timing
 - [x] halt_ime0_ei
