@@ -18,7 +18,7 @@ pub struct Timer {
 impl Timer {
     pub fn new() -> Self {
         Self {           
-            div: 0xABEC,
+            div: 0xABCC,
             tima: 0,
             tma: 0,
             tac: 0,
@@ -44,12 +44,15 @@ impl Timer {
         }
 
         if self.tima_overflown {
+            request_timer_interrupt = true;
             self.ticks_since_tima_overflown += 1;
         }
 
         match self.ticks_since_tima_overflown {
-            0..=3 => { }, // NOP
-            4 => request_timer_interrupt = true,
+            0 => { } // default value
+            
+            1 => request_timer_interrupt = true,
+            2..=4 => { }, // NOP
             5 => self.tima = self.tma,
             6 => {
                 self.tima = self.tma;

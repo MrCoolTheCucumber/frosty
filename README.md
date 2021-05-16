@@ -56,9 +56,9 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
     - [ ] sources
 - [ ] serial
     - [ ] boot_sclk_align 
-- [ ] Timer
+- [x] Timer
     - [x] div_write
-    - [ ] rapid_toggle
+    - [x] rapid_toggle
     - [x] tim00
     - [x] tim00_div_trigger
     - [x] tim01
