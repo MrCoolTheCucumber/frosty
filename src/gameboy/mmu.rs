@@ -242,6 +242,13 @@ impl Mmu {
                         else if addr == 0xFF41 {
                             let stat = self.io[0x41];
                             self.io[0x41] = (stat & 0b1000_0111) | (val & 0b0111_1000);
+
+                            // re-check stat conds as if they are all enabled?
+                            let ppu_mode = self.io[0x41] & 0b0000_0011;
+                            let req_stat = ppu_mode < 3 || self.io[0x44] == self.io[0x45];
+                            if req_stat {
+                                self.interupts.request_interupt(InterruptFlag::Stat);
+                            }
                         }
 
                         else if addr == 0xFF44 {
@@ -250,7 +257,7 @@ impl Mmu {
 
                         else if addr == 0xFF45 {
                             self.io[0x45] = val;
-                            if self.io[0x44] == val {
+                            if self.io[0x44] == val && self.io[0x41] & 0b0100_0000 != 0 {
                                 self.interupts.request_interupt(InterruptFlag::Stat);
                             }
                         }
