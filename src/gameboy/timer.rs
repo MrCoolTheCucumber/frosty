@@ -44,7 +44,6 @@ impl Timer {
         }
 
         if self.tima_overflown {
-            request_timer_interrupt = true;
             self.ticks_since_tima_overflown += 1;
         }
 
