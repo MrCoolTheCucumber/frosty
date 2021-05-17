@@ -1,10 +1,15 @@
-# GameBoy Emulator written in Rust
+# Frosty
 
-A (fairly) cycle accurate gameboy emulator.
+Frosty is a GameBoy emulator written in rust.
 
 ![image](https://user-images.githubusercontent.com/16002713/117520192-ebc23900-af9e-11eb-94b0-c4e67b1e6ac6.png)
 ![image](https://user-images.githubusercontent.com/16002713/118184155-e8153300-b432-11eb-8449-ef6f9a58b9cc.png)
 
+## TODO:
+- Implement Sound
+- Implement all cartridge types (only some are implemented right now)
+- Implement correct sprite draw timings
+- STAT IRQ Blocking
 
 ## Tests
 All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 ppu test!
@@ -102,11 +107,6 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - [ ] reti_intr_timing
 - [ ] reti_timing
 - [ ] rst_timing
-
-
-## TODO:
-- Implement Sound? Not sure how hard it is
-- Implement all cartridge types
 
 ## References Used
 - https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
