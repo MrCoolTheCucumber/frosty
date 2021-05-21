@@ -31,6 +31,20 @@ ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycle
 - https://gbdev.gg8.se/wiki/articles/Gameboy_sound_hardware
 - https://gbdev.gg8.se/wiki/articles/Sound_Controller
 - https://gbdev.io/pandocs/#sound-controller
+- https://www.reddit.com/r/EmuDev/comments/5gkwi5/gb_apu_sound_emulation/
+
+- PCM: Pulse code modulation
+- 3 params
+    - nyquest(?) freq: half the sampling rate (usually 44.1 or 48 kHz). The
+        highest freq the pcm will be able to "describe"
+    - sample format: (8 bit, a-law, mew-law, 16/24 signed bit, 32 bit float) the format used to
+        describe the value of the amplitude of the signal 
+    - number of channels: usually 2. values are interleaved between the channels in the data stream.
+
+- https://sound.stackexchange.com/questions/34816/what-is-a-noise-sweep
+- https://github.com/simias/gb-rs/blob/master/src/ui/sdl2/audio.rs
+- https://www.youtube.com/watch?v=72dI7dB3ZvQ
 
 # Misc
 - DMA bus conflicts (ram trashing thing?)
+- Implement oam dma as a completely separate thing that ticks over time

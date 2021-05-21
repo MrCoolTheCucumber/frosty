@@ -1,4 +1,4 @@
-use ggez::event::KeyCode;
+use sdl2::keyboard::Keycode;
 
 
 // http://imrannazar.com/GameBoy-Emulation-in-JavaScript:-Input
@@ -69,32 +69,32 @@ impl Input {
         joyp | 0b1100_0000
     }
 
-    pub fn key_down(&mut self, code: KeyCode) -> bool {
+    pub fn key_down(&mut self, code: Keycode) -> bool {
         match code {
-            KeyCode::W => self.up = 0,
-            KeyCode::A => self.left = 0,
-            KeyCode::S => self.down = 0,
-            KeyCode::D => self.right = 0,
-            KeyCode::O => self.a = 0,
-            KeyCode::K => self.b = 0,
-            KeyCode::N => self.select = 0,
-            KeyCode::M => self.start = 0,
+            Keycode::W => self.up = 0,
+            Keycode::A => self.left = 0,
+            Keycode::S => self.down = 0,
+            Keycode::D => self.right = 0,
+            Keycode::O => self.a = 0,
+            Keycode::K => self.b = 0,
+            Keycode::N => self.select = 0,
+            Keycode::M => self.start = 0,
             _ => return false
         };
 
         true
     }
 
-    pub fn key_up(&mut self, code: KeyCode) {
+    pub fn key_up(&mut self, code: Keycode) {
         match code {
-            KeyCode::W => self.up = 1,
-            KeyCode::A => self.left = 1,
-            KeyCode::S => self.down = 1,
-            KeyCode::D => self.right = 1,
-            KeyCode::O => self.a = 1,
-            KeyCode::K => self.b = 1,
-            KeyCode::N => self.select = 1,
-            KeyCode::M => self.start = 1,
+            Keycode::W => self.up = 1,
+            Keycode::A => self.left = 1,
+            Keycode::S => self.down = 1,
+            Keycode::D => self.right = 1,
+            Keycode::O => self.a = 1,
+            Keycode::K => self.b = 1,
+            Keycode::N => self.select = 1,
+            Keycode::M => self.start = 1,
             _ => {} // do nothing
         }
     }

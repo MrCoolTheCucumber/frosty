@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use ggez::event::KeyCode;
+use sdl2::keyboard::Keycode;
 
 use self::{cpu::Cpu, interupt::{InterruptFlag, Interupt}, mmu::Mmu, ppu::Ppu};
 
@@ -43,7 +43,7 @@ impl GameBoy {
         }
     }
 
-    pub fn key_down(&mut self, key: KeyCode) {
+    pub fn key_down(&mut self, key: Keycode) {
         let mut mmu = (*self.mmu).borrow_mut();
         let sucessful_press = mmu.input.key_down(key);
         
@@ -53,7 +53,7 @@ impl GameBoy {
         }
     }
 
-    pub fn key_up(&mut self, key: KeyCode) {
+    pub fn key_up(&mut self, key: Keycode) {
         (*self.mmu).borrow_mut().input.key_up(key);
     }
 

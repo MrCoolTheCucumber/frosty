@@ -1,143 +1,134 @@
-#![allow(dead_code)]
+use std::time::Duration;
 
-pub mod gameboy;
+use gameboy_rs::gameboy::GameBoy;
+use sdl2::{pixels::PixelFormatEnum, render::{Canvas, Texture}, video::Window};
 
-use std::{thread, time::Duration};
-
-use ggez::{Context, ContextBuilder, GameResult, conf::{FullscreenType, NumSamples, WindowMode, WindowSetup}};
-use ggez::event::{self, EventHandler, KeyCode, KeyMods};
-use ggez::graphics;
-
-use crate::gameboy::GameBoy;
-
+const SCALE: u32 = 2;
 const WIDTH: u32 = 160;
 const HEIGHT: u32 = 144;
-const SCALE: u32 = 2;
-const SCALED_IMAGE_BUFFER_LENGTH: usize = 160 * 144 * 4 * SCALE as usize;
-
-struct GBState {
-    gb: GameBoy,
-    prev_cpu_cycles: u64,
-    turbo: bool
-}
-
-impl GBState {
-    pub fn new(_ctx: &mut Context) -> Self {
-        let rom_path = match std::env::consts::OS {
-            "linux" => "/home/ruben/dev/gb-rs/tetris.gb",
-            "windows" => "I:\\Dev\\gb-rs\\statcount-auto.gb",
-            _ => panic!("wat?")
-        };
-
-        let gb = GameBoy::new(rom_path);
-
-        Self {
-            gb,
-            prev_cpu_cycles: 0,
-            turbo: false
-        }
-    }
-}
-
 const CYCLES_PER_SCREEN_DRAW: u64 = 70_224;
 
-impl EventHandler for GBState {
-    fn key_down_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods, _repeat: bool) {
-        if _repeat { return; }
-        if keycode == KeyCode::Tab { self.turbo = true; return }
-        
-        self.gb.key_down(keycode);
-    }
+fn main() {
+    let rom_path = match std::env::consts::OS {
+        "linux" => "/home/ruben/dev/gb-rs/tetris.gb",
+        "windows" => "I:\\Dev\\gb-rs\\tetris.gb",
+        _ => panic!("wat?")
+    };
 
-    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
-        if keycode == KeyCode::Tab { self.turbo = false; return }
-        self.gb.key_up(keycode);
-    }
+    let mut gb = GameBoy::new(rom_path);
 
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+    let sdl = sdl2::init().unwrap();
+    let video_subsystem = sdl.video().unwrap();
+    let window = video_subsystem
+        .window("frosty", WIDTH * SCALE, HEIGHT * SCALE)
+        .opengl()
+        .resizable()
+        .build()
+        .unwrap();
+
+    let mut canvas = window
+        .into_canvas()
+        .build()
+        .map_err(|e| e.to_string())
+        .unwrap();
+
+    let texture_creator = canvas.texture_creator();
+    let mut texture = texture_creator
+        .create_texture_streaming(PixelFormatEnum::RGB24, WIDTH, HEIGHT)
+        .map_err(|e| e.to_string())
+        .unwrap();
+
+    let mut frame_count: u64 = 0;
+    let timer = sdl.timer().unwrap();
+    let mut turbo = false;
+
+    let mut event_pump = sdl.event_pump().unwrap();
+    'main: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                sdl2::event::Event::KeyDown {
+                     timestamp: _, 
+                     window_id: _, 
+                     keycode, 
+                     scancode: _, 
+                     keymod: _, 
+                     repeat 
+                } => {
+                    if !repeat && keycode.is_some() {
+                        let keycode = keycode.unwrap();
+                        match keycode {
+                            sdl2::keyboard::Keycode::Tab => turbo = true,
+                            _ => gb.key_down(keycode)
+                        }
+                    }
+                }
+
+                sdl2::event::Event::KeyUp {
+                    timestamp: _, 
+                    window_id: _, 
+                    keycode, 
+                    scancode: _, 
+                    keymod: _, 
+                    repeat 
+               } => {
+                   if !repeat && keycode.is_some() {
+                       let keycode = keycode.unwrap();
+                       match keycode {
+                        sdl2::keyboard::Keycode::Tab => turbo = false,
+                        _ => gb.key_up(keycode)
+                    }
+                   }
+               }
+
+                sdl2::event::Event::Quit { .. } => break 'main,
+                _ => {}
+            }
+        }
+
+        let start = timer.performance_counter();
+
         for _ in 0..CYCLES_PER_SCREEN_DRAW {
-            self.gb.tick();
+            gb.tick();
         }
 
-        if !self.turbo {
-            thread::sleep(Duration::from_millis(5));
-        }
-        graphics::set_window_title(_ctx, format!("gameboy-rs (FPS: {})", ggez::timer::fps(_ctx) as u64).as_str());
+        update_canvas(&mut texture, &mut canvas, &gb);
+        frame_count += 1;
 
-        Ok(())
-    }
+        let end = timer.performance_counter();
+        let elapsed = (end - start) as f64 / timer.performance_frequency() as f64 * 1000.0;
 
-    fn draw(&mut self, _ctx: &mut Context) -> GameResult {
-        graphics::clear(_ctx, graphics::Color::from_rgb(0, 0, 0));
-
-        let frame_buffer = self.gb.get_frame_buffer();
-
-        let mut image_buffer: [u8; 160 * 144 * 4] = [0; 160 * 144 * 4];
-
-        let mut i = 0;
-        while i < (WIDTH * HEIGHT * 4) {
-            let color = frame_buffer[(i / 4) as usize];
-
-            image_buffer[i as usize] = color;
-            image_buffer[(i + 1) as usize] = color;
-            image_buffer[(i + 2) as usize] = color;
-            image_buffer[(i + 3) as usize] = 255;
-
-            i += 4;
+        if !turbo && elapsed < 16.6666 {
+            let sleep_amount = (16.6666 - elapsed) as u64;
+            std::thread::sleep(Duration::from_millis(sleep_amount));
         }
 
-        let mut img = 
-            graphics::Image::from_rgba8(_ctx, WIDTH as u16, HEIGHT as u16, &image_buffer)?;
-        img.set_filter(graphics::FilterMode::Nearest);
+        let end = timer.performance_counter();
 
-        let pos: [f32; 2] = [0.0; 2];
-        let mut dp = graphics::DrawParam::default();
-        dp = dp
-                .dest(pos)
-                .scale([SCALE as f32; 2]);
-
-        graphics::draw(_ctx, &img, dp)?;
-
-        return graphics::present(_ctx);
+        if frame_count % 180 == 0 {
+            let elapsed = (end - start) as f64 / timer.performance_frequency() as f64;
+            canvas.window_mut().set_title(format!("frosty fps: {:.1}", 1.0f64 / elapsed).as_str()).unwrap()
+        }
     }
 }
 
-fn main() {  
-    let window_setup = WindowSetup {
-        title: "gb-rs".to_owned(),
-        samples: NumSamples::Zero,
-        vsync: false,
-        icon: "".to_owned(),
-        srgb: true,
-    };
+fn update_canvas(texture: &mut Texture, canvas: &mut Canvas<Window>, gb: &GameBoy) {
+    let frame_buffer = gb.get_frame_buffer();
 
-    let window_width = (WIDTH * SCALE) as f32;
-    let window_height = (HEIGHT * SCALE) as f32;
+    texture.with_lock(None, |buffer: &mut [u8], _pitch: usize| {
+        let mut i: usize = 0;
+        while i < (WIDTH * HEIGHT * 3) as usize {
+            let index = i / 3;
+            let color = frame_buffer[index];
 
-    let window_mode = WindowMode {
-        width: window_width,
-        height: window_height,
-        maximized: false,
-        fullscreen_type: FullscreenType::Windowed,
-        borderless: false,
-        min_width: window_width,
-        max_width: window_width,
-        min_height: window_height,
-        max_height: window_height,
-        resizable: false,
-    };
+            buffer[i] = color;
+            buffer[i + 1] = color;
+            buffer[i + 2] = color;
 
-    let (mut ctx, mut event_loop) = 
-        ContextBuilder::new("gb-rs", "Ruben")
-            .window_setup(window_setup)
-            .window_mode(window_mode)
-            .build()
-            .unwrap();
+            i += 3;
+        }
+    }).unwrap();
 
-    let mut gb_state = GBState::new(&mut ctx);
-
-    match event::run(&mut ctx, &mut event_loop, &mut gb_state) {
-        Ok(_) => { },
-        Err(e) => println!("Error: {}", e)
-    }
+    canvas.clear();
+    canvas.copy(&texture, None, None).unwrap();
+    canvas.present();
 }
