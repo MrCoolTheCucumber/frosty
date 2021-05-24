@@ -2,8 +2,11 @@
 
 Frosty is a GameBoy emulator written in rust.
 
-![image](https://user-images.githubusercontent.com/16002713/117520192-ebc23900-af9e-11eb-94b0-c4e67b1e6ac6.png)
-![image](https://user-images.githubusercontent.com/16002713/118184155-e8153300-b432-11eb-8449-ef6f9a58b9cc.png)
+![image](https://user-images.githubusercontent.com/16002713/119414812-330f3000-bce8-11eb-9eac-b12482dbc3f2.png)
+![image](https://user-images.githubusercontent.com/16002713/119414937-78336200-bce8-11eb-96d3-62a601df39a1.png)
+![image](https://user-images.githubusercontent.com/16002713/119415269-2b03c000-bce9-11eb-9185-022d400062cb.png)
+![image](https://user-images.githubusercontent.com/16002713/119415428-833ac200-bce9-11eb-9253-2d06c72ff08a.png)
+
 
 ## TODO:
 - Implement Sound
