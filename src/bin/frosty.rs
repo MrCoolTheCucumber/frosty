@@ -11,7 +11,7 @@ const CYCLES_PER_SCREEN_DRAW: u64 = 70_224;
 fn main() {
     let rom_path = match std::env::consts::OS {
         "linux" => "/home/ruben/dev/gb-rs/tetris.gb",
-        "windows" => "I:\\Dev\\gb-rs\\tetris.gb",
+        "windows" => "I:\\Dev\\gb-rs\\Prehistorik Man (USA, Europe).gb",
         _ => panic!("wat?")
     };
 
@@ -175,7 +175,7 @@ fn main() {
 
             let average_percent = comutative_speed.iter().sum::<f64>() / comutative_speed.len() as f64;
 
-            canvas.window_mut().set_title(format!("Frosty  [{:.1}%]", average_percent).as_str()).unwrap()
+            canvas.window_mut().set_title(format!("Frosty  [{:.0}%]", average_percent).as_str()).unwrap()
         }
     }
 }

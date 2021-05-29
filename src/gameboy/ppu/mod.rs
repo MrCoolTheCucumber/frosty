@@ -210,6 +210,7 @@ impl Ppu {
             self.reset = false;
             self.mode = PpuMode::OAM;
             let mut mmu = (*self.mmu).borrow_mut();
+
             // So the mode in the stat flag should be zero after reset 
             // even though the ppu is actually in mode 2? 🤔
             mmu.io[0x41] = mmu.io[0x41] & 0b11111100;
@@ -221,6 +222,7 @@ impl Ppu {
 
         // https://robertovaccari.com/gameboy/LCD-refresh-diagram.png
         match self.mode {
+            // 0
             PpuMode::HBlank => {
                 if self.line_clock_cycles == 456 {
                     self.mode_clock_cycles = 0;
@@ -244,6 +246,7 @@ impl Ppu {
                 }
             }
 
+            // 1
             PpuMode::VBlank => {
                 if self.line_clock_cycles == 456 {
                     self.line_clock_cycles = 0;
@@ -266,6 +269,7 @@ impl Ppu {
                 }
             },
             
+            // 2
             PpuMode::OAM => {
                 if self.mode_clock_cycles == 80 {
                     // do we need cycle accurate oam fetching?
@@ -355,6 +359,7 @@ impl Ppu {
                 }
             }
 
+            // 3
             PpuMode::VRAM => {
                 // apparently the drawing happens here?
                 // (when BG tiles and sprites are rendered)

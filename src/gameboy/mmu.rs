@@ -112,6 +112,12 @@ impl Mmu {
 
                     0x0E00 => {
                         if addr < 0xFEA0 {
+                            // if we are in mode 2, return 0xFF
+                            let mode = self.io[0x41] & 3;
+                            if mode == 3 || mode == 2 {
+                                return 0xFF;
+                            }
+
                             return self.sprite_table[(addr - 0xFE00) as usize];
                         }
 

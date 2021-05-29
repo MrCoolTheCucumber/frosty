@@ -9,6 +9,11 @@ edition = "2018"
 [dependencies]
 colored = "2"
 sdl2 = { version = "0.34.0", features = ["bundled", "static-link"] }
+imgui = "0.7.0"
+imgui-sdl2 = "0.14.0"
+gl = "0.14.0"
+imgui-opengl-renderer = "0.11"
+nfd2 = "0.3.0"
 
 [profile.test] 
 opt-level = 3
