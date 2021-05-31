@@ -6,15 +6,13 @@ extern crate imgui_sdl2;
 extern crate gl;
 extern crate imgui_opengl_renderer;
 
-mod audio;
+use std::{cell::RefCell, collections::VecDeque, ffi::c_void, process, rc::Rc};
 
-use std::{collections::VecDeque, ffi::c_void, process, time::{Duration}};
-
-use gameboy_rs::{audio::Audio, gameboy::GameBoy};
+use gameboy_rs::{gameboy::{GameBoy, spu::SAMPLES_PER_BUFFER}};
 use gl::types::GLuint;
 use imgui::{MenuItem, im_str};
 use nfd2::Response;
-use sdl2::{pixels::PixelFormatEnum, surface::Surface, video::Window};
+use sdl2::{audio::AudioSpecDesired, pixels::PixelFormatEnum, surface::Surface, video::Window};
 
 const SCALE: u32 = 2;
 const WIDTH: u32 = 160;
@@ -28,7 +26,17 @@ fn main() {
     let sdl = sdl2::init().unwrap();
     let video = sdl.video().unwrap();
     let audio_subsystem = sdl.audio().unwrap();
-    let mut audio: Option<Audio> = None;
+
+    let desired_spec = AudioSpecDesired {
+        freq: Some(48000 as i32),
+        channels: Some(1),
+        samples: Some(SAMPLES_PER_BUFFER as u16)
+    };
+
+    let audio_device = match audio_subsystem.open_queue::<f32, _>(None, &desired_spec) {
+        Ok(d) => Rc::new(RefCell::new(d)),
+        Err(e) => panic!("Unable to initialize audio queue: {:?}", e)
+    };
 
     {
         let gl_attr = video.gl_attr();
@@ -61,46 +69,7 @@ fn main() {
 
     let mut fb_id: GLuint = 0;
     let mut tex_id: GLuint = 0;
-    unsafe {
-        gl::GenTextures(1, &mut tex_id);
-        gl::BindTexture(gl::TEXTURE_2D, tex_id);
-
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-
-        let mut data: [u8; (WIDTH * HEIGHT * 3) as usize] = [0; (WIDTH * HEIGHT * 3) as usize];
-        let mut i = 0usize;
-        while i < (WIDTH * HEIGHT * 3) as usize {
-            data[i] = 55;
-            data[i + 1] = 55;
-            data[i + 2] = 55;
-
-            i += 3;
-        }
-
-        gl::TexImage2D(
-            gl::TEXTURE_2D, 
-            0, 
-            gl::RGB as i32, 
-            WIDTH as i32, 
-            HEIGHT as i32, 
-            0, 
-            gl::RGB, 
-            gl::UNSIGNED_BYTE, 
-            data.as_ptr() as *const c_void
-        );
-
-        gl::BindTexture(gl::TEXTURE_2D, 0);
-
-        // https://stackoverflow.com/questions/31482816/opengl-is-there-an-easier-way-to-fill-window-with-a-texture-instead-using-vbo
-
-        gl::GenFramebuffers(1, &mut fb_id);
-
-        gl::ClearColor(0.4549, 0.92549, 0.968627, 0.7);
-        gl::Clear(gl::COLOR_BUFFER_BIT);
-    }
+    init_gl_state(&mut tex_id, &mut fb_id);
 
     let mut paused = true;
 
@@ -132,6 +101,7 @@ fn main() {
                         match keycode {
                             sdl2::keyboard::Keycode::Tab => {
                                 turbo = true;
+                                (*audio_device).borrow().pause();
                                 comutative_speed.clear();
                             },
                             _ => {
@@ -156,6 +126,10 @@ fn main() {
                         match keycode {
                             sdl2::keyboard::Keycode::Tab => {
                                 turbo = false;
+                                let ad = (*audio_device).borrow();
+                                ad.clear();
+                                ad.queue(&[0.0; SAMPLES_PER_BUFFER]);
+                                ad.resume();
                                 comutative_speed.clear();
                             },
                             _ => {
@@ -195,12 +169,8 @@ fn main() {
             render_paused_frame(fb_id, tex_id);
         }
 
-        let end = timer.performance_counter();
-        let elapsed = (end - start) as f64 / timer.performance_frequency() as f64 * 1000.0;
-
-        if !turbo && elapsed < 16.75041 {
-            let sleep_amount = (16.75041 - elapsed) as u64;
-            std::thread::sleep(Duration::from_millis(sleep_amount));
+        if gb.is_some() && !turbo {
+            while (*audio_device).borrow().size() > SAMPLES_PER_BUFFER as u32 * 4 { }
         }
 
         let ui = imgui.frame();
@@ -209,19 +179,19 @@ fn main() {
                 match ui.begin_menu(im_str!("File"), true) {
                     Some(mm_token) => {
                         if MenuItem::new(im_str!("Load ROM")).build(&ui) {
-                            if audio.is_some() {
-                                audio.as_ref().unwrap().pause();
-                            } 
+                            (*audio_device).borrow().pause();
 
                             match nfd2::open_file_dialog(Some("gb"), None).expect("Hmm?") {
                                 Response::Okay(file_path) => {
-                                    let (_gb, receiver) = GameBoy::new(file_path.to_str().unwrap());
+                                    let _gb = GameBoy::new(
+                                        file_path.to_str().unwrap(), 
+                                        Some(audio_device.clone())
+                                    );
                                     gb = Some(_gb);
 
-                                    let _audio = gameboy_rs::audio::Audio::new(&audio_subsystem, receiver);
-                                    _audio.resume();
-                                    audio = Some(_audio);
-
+                                    let ad = (*audio_device).borrow();
+                                    ad.queue(&[0.0; SAMPLES_PER_BUFFER]);
+                                    ad.resume();
                                     paused = false;
                                 },
                                 
@@ -236,12 +206,10 @@ fn main() {
                             if !(paused && gb.is_none()) {
                                 paused = !paused;
 
-                                if audio.is_some() {
-                                    if paused {
-                                        audio.as_ref().unwrap().pause();
-                                    } else {
-                                        audio.as_ref().unwrap().resume();
-                                    }
+                                if paused {
+                                    (*audio_device).borrow().pause();
+                                } else {
+                                    (*audio_device).borrow().resume();
                                 }
                             }
                         }
@@ -284,6 +252,49 @@ fn main() {
         renderer.render(ui);
 
         window.gl_swap_window();
+    }
+}
+
+fn init_gl_state(tex_id: &mut u32, fb_id: &mut u32) {
+    unsafe {
+        gl::GenTextures(1, tex_id);
+        gl::BindTexture(gl::TEXTURE_2D, *tex_id);
+
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+
+        let mut data: [u8; (WIDTH * HEIGHT * 3) as usize] = [0; (WIDTH * HEIGHT * 3) as usize];
+        let mut i = 0usize;
+        while i < (WIDTH * HEIGHT * 3) as usize {
+            data[i] = 55;
+            data[i + 1] = 55;
+            data[i + 2] = 55;
+
+            i += 3;
+        }
+
+        gl::TexImage2D(
+            gl::TEXTURE_2D, 
+            0, 
+            gl::RGB as i32, 
+            WIDTH as i32, 
+            HEIGHT as i32, 
+            0, 
+            gl::RGB, 
+            gl::UNSIGNED_BYTE, 
+            data.as_ptr() as *const c_void
+        );
+
+        gl::BindTexture(gl::TEXTURE_2D, 0);
+
+        // https://stackoverflow.com/questions/31482816/opengl-is-there-an-easier-way-to-fill-window-with-a-texture-instead-using-vbo
+
+        gl::GenFramebuffers(1, fb_id);
+
+        gl::ClearColor(0.4549, 0.92549, 0.968627, 0.7);
+        gl::Clear(gl::COLOR_BUFFER_BIT);
     }
 }
 

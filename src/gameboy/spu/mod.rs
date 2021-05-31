@@ -1,19 +1,24 @@
-use std::{sync::mpsc::{Receiver, SyncSender, TrySendError, sync_channel}};
+use std::{cell::RefCell, rc::Rc};
 
-use crate::audio::{SAMPLES_PER_BUFFER, Sample, SampleBuffer};
+use sdl2::audio::AudioQueue;
 
 use self::{envelope::Envelope, rectangle_wave::{Duty, RectangleWave}};
 
-const CLOCKS_PER_SAMPLE: u16 = 85;
+
 
 mod rectangle_wave;
 mod envelope;
 
-const MAX_VOLUME: Sample = (1 << 4) - 1;
-const MAX_SAMPLE: Sample = MAX_VOLUME * 8;
+pub const MAX_VOLUME: Sample = (1 << 4) - 1;
+pub const MAX_SAMPLE: Sample = MAX_VOLUME * 8;
+pub const SAMPLES_PER_BUFFER: usize = 1024;
+pub const SAMPLE_RATE: u32 = 48000;
+pub const CLOCKS_PER_SAMPLE: u16 = 87;
+
+pub type Sample = u8;
+pub type SampleBuffer = [Sample; SAMPLES_PER_BUFFER];
 
 pub struct Spu {
-    sender: SyncSender<SampleBuffer>,
     sample_clock: u16,
     buffer: SampleBuffer,
     buffer_pos: usize,
@@ -21,24 +26,23 @@ pub struct Spu {
     enabled: bool,
 
     channel_2: RectangleWave,
+
+    device: Option<Rc<RefCell<AudioQueue<f32>>>>
 }
 
 impl Spu {
-    pub fn new() -> (Self, Receiver<SampleBuffer>) {
-        let (sender, receiver) = sync_channel(4);
-
-        let spu = Spu {
-            sender,
+    pub fn new(device: Option<Rc<RefCell<AudioQueue<f32>>>>) -> Self {
+        Spu {
             sample_clock: CLOCKS_PER_SAMPLE,
             buffer: [0; SAMPLES_PER_BUFFER],
             buffer_pos: 0,
 
             enabled: false,
 
-            channel_2: RectangleWave::new()
-        };
+            channel_2: RectangleWave::new(),
 
-        (spu, receiver)
+            device
+        }
     }
 
     pub fn tick(&mut self) {
@@ -55,7 +59,9 @@ impl Spu {
     }
 
     pub fn sample(&mut self) {
-        let sample = self.channel_2.sample();
+        let mut sample = self.channel_2.sample();
+
+        sample = sample * (u8::MAX / 15);
 
         self.buffer[self.buffer_pos] = sample;
         self.buffer_pos += 1;
@@ -67,14 +73,17 @@ impl Spu {
     }
 
     pub fn send_sample(&mut self) {
-        match self.sender.try_send(self.buffer) {
-            Ok(_) => {}
-            Err(e) => {
-                match e {
-                    TrySendError::Full(_) => println!("Tried to send sound sample, but channel is full?"),
-                    _ => panic!("{:?}", e)
-                }
-            }
+        let mut buffer = [0.0; SAMPLES_PER_BUFFER];
+        for i in 0..SAMPLES_PER_BUFFER {
+            let mut f: f32 = (self.buffer[i] - 128) as i8 as f32 / 16384.0;
+            if f > 1.0 { f = 1.0 }
+            if f < -1.0 { f = -1.0 }
+
+            buffer[i] = f; 
+        }
+
+        if self.device.is_some() {
+            (*self.device.as_ref().unwrap()).borrow().queue(&buffer);
         }
     }
 

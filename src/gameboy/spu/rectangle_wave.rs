@@ -1,6 +1,4 @@
-use crate::audio::Sample;
-
-use super::{Mode, envelope::Envelope};
+use super::{Mode, Sample, envelope::Envelope};
 
 
 pub(super) struct RectangleWave {

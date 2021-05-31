@@ -1,16 +1,14 @@
-use std::{cell::RefCell, rc::Rc, sync::mpsc::{Receiver}};
+use std::{cell::RefCell, rc::Rc};
 
-use sdl2::keyboard::Keycode;
+use sdl2::{audio::AudioQueue, keyboard::Keycode};
 
-use crate::audio::SampleBuffer;
-
-use self::{cpu::Cpu, interupt::{InterruptFlag, Interupt}, mmu::Mmu, ppu::Ppu, spu::Spu};
+use self::{cpu::Cpu, interupt::{InterruptFlag, Interupt}, mmu::Mmu, ppu::Ppu, spu::{Spu}};
 
 mod cpu;
 mod mmu;
 mod interupt;
 mod ppu;
-mod spu;
+pub mod spu;
 mod timer;
 mod input;
 mod cartridge;
@@ -32,21 +30,19 @@ pub struct GameBoy {
 }
 
 impl GameBoy {
-    pub fn new(rom_path: &str) -> (Self, Receiver<SampleBuffer>) {
+    pub fn new(rom_path: &str, device: Option<Rc<RefCell<AudioQueue<f32>>>>) -> Self {
         let cartridge = cartridge::create(rom_path);
-        let (spu, receiver) = Spu::new();
+        let spu = Spu::new(device);
         let mmu = Rc::new(RefCell::new(Mmu::new(cartridge, spu)));
         
         let cpu = Cpu::new(mmu.clone());
         let ppu = Ppu::new(mmu.clone());
         
-        let gb = Self {
+        Self {
             cpu,
             mmu,
             ppu
-        };
-
-        (gb, receiver)
+        }
     }
 
     pub fn key_down(&mut self, key: Keycode) {
