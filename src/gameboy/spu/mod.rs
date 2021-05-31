@@ -104,6 +104,16 @@ impl Spu {
         if !self.enabled {
             self.reset();
         }
+
+        if self.device.is_some() {
+            let device = (*self.device.as_ref().unwrap()).borrow();
+            if !self.enabled {
+                device.pause();
+            } else {
+                device.clear();
+                device.resume();
+            }
+        }
     }
 
     // CHANNEL 1

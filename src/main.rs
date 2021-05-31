@@ -12,7 +12,7 @@ use gameboy_rs::{gameboy::{GameBoy, spu::{ SAMPLES_PER_BUFFER}}};
 use gl::types::GLuint;
 use imgui::{MenuItem, im_str};
 use nfd2::Response;
-use sdl2::{audio::AudioSpecDesired, pixels::PixelFormatEnum, surface::Surface, video::Window};
+use sdl2::{audio::{AudioSpecDesired, AudioStatus}, pixels::PixelFormatEnum, surface::Surface, video::Window};
 
 const SCALE: u32 = 2;
 const WIDTH: u32 = 160;
@@ -171,7 +171,7 @@ fn main() {
             render_paused_frame(fb_id, tex_id);
         }
 
-        if gb.is_some() && !turbo && !paused {
+        if gb.is_some() && !turbo && !paused && (*audio_device).borrow().status() == AudioStatus::Playing {
             while (*audio_device).borrow().size() > SAMPLES_PER_BUFFER as u32 * 4 { }
         }
 
@@ -192,8 +192,8 @@ fn main() {
                                     gb = Some(_gb);
 
                                     let ad = (*audio_device).borrow();
-                                    ad.queue(&[0.0; SAMPLES_PER_BUFFER]);
-                                    ad.resume();
+                                    ad.clear();
+                                    // the gameboy will resume the audio
                                     paused = false;
                                 },
                                 

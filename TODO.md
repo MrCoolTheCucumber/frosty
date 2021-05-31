@@ -55,6 +55,8 @@ ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycle
 - https://gist.github.com/drhelius/3652407
 - https://stackoverflow.com/questions/15087668/how-to-convert-pcm-samples-in-byte-array-as-floating-point-numbers-in-the-range
 
+- AUDIO POPS ARE HAPPENING BECAUSE AUDIO SIGNAL IS NOT "CENTERED" TO 0, ITS CENTERED TO -128. RE-DO SAMPLE ADJUSTMENT PIPELINE
+
 # Node FFI
 - https://stackoverflow.com/questions/36604010/how-can-i-build-multiple-binaries-with-cargo
 - https://www.reddit.com/r/rust/comments/jg1qm2/electron_rust_how_to_talk_to_each_other/
