@@ -29,7 +29,9 @@ pub struct Ppu {
 
     mode_clock_cycles: u64,
     line_clock_cycles: u64,
-    frame_clock_cycles: u64
+    frame_clock_cycles: u64,
+
+    pub draw_flag: bool
 }
 
 pub struct Sprite {
@@ -120,7 +122,9 @@ impl Ppu {
 
             mode_clock_cycles: 0,
             line_clock_cycles: 0,
-            frame_clock_cycles: 0
+            frame_clock_cycles: 0,
+
+            draw_flag: false
         }
     }
 
@@ -238,6 +242,9 @@ impl Ppu {
                         (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::VBlank);
                         self.set_mode_lcdc(PpuMode::VBlank);
                         self.mode = PpuMode::VBlank;
+
+                        // notify safe draw
+                        self.draw_flag = true;
                     }
                     else {
                         self.set_mode_lcdc(PpuMode::OAM);

@@ -156,6 +156,26 @@ impl Mmu {
                         }
 
                         // SOUND
+                        else if addr == 0xFF10 {
+                            return self.spu.get_nr10()
+                        }
+
+                        else if addr == 0xFF11 {
+                            return self.spu.get_nr11()
+                        }
+
+                        else if addr == 0xFF12 {
+                            return self.spu.get_nr12()
+                        }
+
+                        else if addr == 0xFF13 {
+                            return self.spu.get_nr13()
+                        }
+
+                        else if addr == 0xFF14 {
+                            return self.spu.get_nr14()
+                        }
+
                         else if addr == 0xFF16 {
                             return self.spu.get_nr21()
                         }
@@ -327,6 +347,26 @@ impl Mmu {
                         }
 
                         // SOUND
+                        else if addr == 0xFF10 {
+                            self.spu.set_nr10(val);
+                        }
+
+                        else if addr == 0xFF11 {
+                            self.spu.set_nr11(val);
+                        }
+
+                        else if addr == 0xFF12 {
+                            self.spu.set_nr12(val);
+                        }
+
+                        else if addr == 0xFF13 {
+                            self.spu.set_nr13(val);
+                        }
+
+                        else if addr == 0xFF14 {
+                            self.spu.set_nr14(val);
+                        }
+
                         else if addr == 0xFF16 {
                             self.spu.set_nr21(val);
                         }

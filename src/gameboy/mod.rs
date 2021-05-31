@@ -63,6 +63,14 @@ impl GameBoy {
         &self.ppu.frame_buffer
     }
 
+    pub fn get_draw_flag(&self) -> bool {
+        self.ppu.draw_flag
+    }
+
+    pub fn clear_draw_flag(&mut self) {
+        self.ppu.draw_flag = false;
+    }
+
     pub fn tick(&mut self) {
         if self.cpu.stopped { return }
 

@@ -6,9 +6,9 @@ extern crate imgui_sdl2;
 extern crate gl;
 extern crate imgui_opengl_renderer;
 
-use std::{cell::RefCell, collections::VecDeque, ffi::c_void, process, rc::Rc};
+use std::{cell::RefCell, collections::VecDeque, ffi::c_void, process, rc::Rc, time::Duration};
 
-use gameboy_rs::{gameboy::{GameBoy, spu::SAMPLES_PER_BUFFER}};
+use gameboy_rs::{gameboy::{GameBoy, spu::{ SAMPLES_PER_BUFFER}}};
 use gl::types::GLuint;
 use imgui::{MenuItem, im_str};
 use nfd2::Response;
@@ -18,7 +18,6 @@ const SCALE: u32 = 2;
 const WIDTH: u32 = 160;
 const HEIGHT: u32 = 144;
 const MENU_BAR_HEIGHT: u32 = 19;
-const CYCLES_PER_SCREEN_DRAW: u64 = 70_224;
 
 fn main() {
     let mut gb: Option<GameBoy> = None;
@@ -158,18 +157,21 @@ fn main() {
         }
 
         if gb.is_some() && !paused {
-            for _ in 0..CYCLES_PER_SCREEN_DRAW {
-                gb.as_mut().unwrap().tick();
+            let gb = gb.as_mut().unwrap();
+            while !gb.get_draw_flag() {
+                gb.tick();
             }
 
-            render_gb(gb.as_ref().unwrap(), fb_id, tex_id);
+            render_gb(gb, fb_id, tex_id);
+            gb.clear_draw_flag();
         }
 
-        else if gb.is_some() && paused{
+        else if gb.is_some() && paused {
+            std::thread::sleep(Duration::from_millis(16));
             render_paused_frame(fb_id, tex_id);
         }
 
-        if gb.is_some() && !turbo {
+        if gb.is_some() && !turbo && !paused {
             while (*audio_device).borrow().size() > SAMPLES_PER_BUFFER as u32 * 4 { }
         }
 

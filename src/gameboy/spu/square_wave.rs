@@ -1,7 +1,7 @@
 use super::{Mode, Sample, envelope::Envelope};
 
 
-pub(super) struct RectangleWave {
+pub(super) struct SquareWave {
     pub duty: Duty,
     envelope: Envelope,
     pub start_envelope: Envelope,
@@ -11,10 +11,11 @@ pub(super) struct RectangleWave {
     enabled: bool,
     remaining: u32,
     counter: u16,
-    phase: u8
+    phase: u8,
+    pub sweep: Sweep
 }
 
-impl RectangleWave {
+impl SquareWave {
     pub fn new() -> Self {
         Self {
             duty: Duty::from(0),
@@ -26,7 +27,8 @@ impl RectangleWave {
             enabled: false,
             remaining: 64 * 0x4000,
             counter: 0,
-            phase: 0
+            phase: 0,
+            sweep: Sweep::new(0)
         }
     }
 
@@ -45,7 +47,13 @@ impl RectangleWave {
 
         self.envelope.tick();
 
-        // TODO: freq sweeps
+        self.freq = match self.sweep.tick(self.freq) {
+            Some(freq) => freq,
+            None => {
+                self.enabled = false;
+                return
+            }
+        };
 
         if self.counter == 0 {
             self.counter = 4 * (0x800 - self.freq);
@@ -114,4 +122,75 @@ impl Duty {
             Duty::D75 => 6
         }
     }
+}
+
+pub(super) struct Sweep {
+    duration: u32,
+    direction: SweepDirection,
+    sweep_shift: u8,
+    counter: u32
+}
+
+impl Sweep {
+    pub fn new(val: u8) -> Self {
+        let shift = val & 0b0000_0111;
+        let direction = if val & 0b0000_1000 == 0 {
+            SweepDirection::Increase
+        } else {
+            SweepDirection::Decrease
+        };
+        let duration = ((val & 0b0111_0000) >> 4) as u32 * 0x8000;
+
+        Self {
+            duration,
+            direction,
+            sweep_shift: shift,
+            counter: 0
+        }
+    }
+
+    pub fn into_u8(&self) -> u8 {
+        let duration = (self.duration / 0x8000) as u8;
+
+        (1 << 7) | (duration << 4) | ((self.direction as u8) << 3) | self.sweep_shift
+    }
+
+    pub fn tick(&mut self, freq: u16) -> Option<u16> {
+        if self.duration == 0 {
+            return Some(freq);
+        }
+
+        self.counter = (self.counter + 1) % self.duration;
+
+        if self.counter != 0 {
+            return Some(freq);
+        }
+
+        let offset = freq >> (self.sweep_shift as u16);
+
+        match self.direction {
+            SweepDirection::Increase => {
+                let freq = freq + offset;
+                if freq > 0x7FF {
+                    None
+                } else {
+                    Some(freq)
+                }
+            }
+            
+            SweepDirection::Decrease => {
+                if self.sweep_shift == 0 || offset > freq {
+                    Some(freq)
+                } else {
+                    Some(freq - offset)
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum SweepDirection {
+    Increase = 0,
+    Decrease = 1
 }
