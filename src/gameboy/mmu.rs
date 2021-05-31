@@ -1,10 +1,11 @@
-use super::{cartridge::Cartridge, input::Input, interupt::{InterruptFlag, Interupt}, timer::Timer};
+use super::{cartridge::Cartridge, input::Input, interupt::{InterruptFlag, Interupt}, spu::Spu, timer::Timer};
 
 const PALETTE: [u8; 4] = [
     255, 192, 96, 0
 ];
 
 pub struct Mmu {
+    pub spu: Spu,
     pub interupts: Interupt,
     pub input: Input,
     pub timer: Timer,
@@ -24,8 +25,9 @@ pub struct Mmu {
 }
 
 impl Mmu {
-    pub fn new(cartridge: Box<dyn Cartridge>) -> Self {
+    pub fn new(cartridge: Box<dyn Cartridge>, spu: Spu) -> Self {
         let mut mmu = Self {
+            spu,
             interupts: Interupt::new(),
             input: Input::new(),
             timer: Timer::new(),
@@ -151,6 +153,27 @@ impl Mmu {
 
                         else if addr >= 0xFF03 && addr <= 0xFF07 {
                             return self.timer.read(addr)
+                        }
+
+                        // SOUND
+                        else if addr == 0xFF16 {
+                            return self.spu.get_nr21()
+                        }
+
+                        else if addr == 0xFF17 {
+                            return self.spu.get_nr22()
+                        }
+
+                        else if addr == 0xFF18 {
+                            return self.spu.get_nr23()
+                        }
+
+                        else if addr == 0xFF19 {
+                            return self.spu.get_nr24()
+                        }
+
+                        else if addr == 0xFF26 {
+                            return self.spu.get_nr52();
                         }
 
                         else if addr >= 0xFF00 && addr <= 0xFF7F {
@@ -301,6 +324,27 @@ impl Mmu {
                             }
 
                             self.io[0x49] = val;
+                        }
+
+                        // SOUND
+                        else if addr == 0xFF16 {
+                            self.spu.set_nr21(val);
+                        }
+
+                        else if addr == 0xFF17 {
+                            self.spu.set_nr22(val);
+                        }
+
+                        else if addr == 0xFF18 {
+                            self.spu.set_nr23(val);
+                        }
+
+                        else if addr == 0xFF19 {
+                            self.spu.set_nr24(val);
+                        }
+
+                        else if addr == 0xFF26 {
+                            self.spu.set_nr52(val);
                         }
 
                         else if addr >= 0xFF00 && addr <= 0xFF7F {

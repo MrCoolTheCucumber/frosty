@@ -6,9 +6,11 @@ extern crate imgui_sdl2;
 extern crate gl;
 extern crate imgui_opengl_renderer;
 
+mod audio;
+
 use std::{collections::VecDeque, ffi::c_void, process, time::{Duration}};
 
-use gameboy_rs::gameboy::GameBoy;
+use gameboy_rs::{audio::Audio, gameboy::GameBoy};
 use gl::types::GLuint;
 use imgui::{MenuItem, im_str};
 use nfd2::Response;
@@ -25,6 +27,8 @@ fn main() {
 
     let sdl = sdl2::init().unwrap();
     let video = sdl.video().unwrap();
+    let audio_subsystem = sdl.audio().unwrap();
+    let mut audio: Option<Audio> = None;
 
     {
         let gl_attr = video.gl_attr();
@@ -205,11 +209,19 @@ fn main() {
                 match ui.begin_menu(im_str!("File"), true) {
                     Some(mm_token) => {
                         if MenuItem::new(im_str!("Load ROM")).build(&ui) {
+                            if audio.is_some() {
+                                audio.as_ref().unwrap().pause();
+                            } 
+
                             match nfd2::open_file_dialog(Some("gb"), None).expect("Hmm?") {
                                 Response::Okay(file_path) => {
-                                    let _gb = GameBoy::new(file_path.to_str().unwrap());
-
+                                    let (_gb, receiver) = GameBoy::new(file_path.to_str().unwrap());
                                     gb = Some(_gb);
+
+                                    let _audio = gameboy_rs::audio::Audio::new(&audio_subsystem, receiver);
+                                    _audio.resume();
+                                    audio = Some(_audio);
+
                                     paused = false;
                                 },
                                 
@@ -223,6 +235,14 @@ fn main() {
                         if MenuItem::new(pause_resume_str).build(&ui) {
                             if !(paused && gb.is_none()) {
                                 paused = !paused;
+
+                                if audio.is_some() {
+                                    if paused {
+                                        audio.as_ref().unwrap().pause();
+                                    } else {
+                                        audio.as_ref().unwrap().resume();
+                                    }
+                                }
                             }
                         }
 
@@ -264,7 +284,7 @@ fn main() {
         renderer.render(ui);
 
         window.gl_swap_window();
-    }  
+    }
 }
 
 fn render_gb(gb: &GameBoy, fb_id: GLuint, tex_id: GLuint) {
@@ -340,7 +360,7 @@ fn render_paused_frame(fb_id: GLuint, tex_id: GLuint) {
             WIDTH as i32, 
             HEIGHT as i32, 
             0, 
-            ((HEIGHT * SCALE) - MENU_BAR_HEIGHT) as i32, 
+            ((HEIGHT * SCALE)) as i32, 
             (WIDTH * SCALE) as i32, 
             0, 
             gl::COLOR_BUFFER_BIT, 

@@ -1,13 +1,16 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, sync::mpsc::{Receiver}};
 
 use sdl2::keyboard::Keycode;
 
-use self::{cpu::Cpu, interupt::{InterruptFlag, Interupt}, mmu::Mmu, ppu::Ppu};
+use crate::audio::SampleBuffer;
+
+use self::{cpu::Cpu, interupt::{InterruptFlag, Interupt}, mmu::Mmu, ppu::Ppu, spu::Spu};
 
 mod cpu;
 mod mmu;
 mod interupt;
 mod ppu;
+mod spu;
 mod timer;
 mod input;
 mod cartridge;
@@ -29,18 +32,21 @@ pub struct GameBoy {
 }
 
 impl GameBoy {
-    pub fn new(rom_path: &str) -> Self {
+    pub fn new(rom_path: &str) -> (Self, Receiver<SampleBuffer>) {
         let cartridge = cartridge::create(rom_path);
-        let mmu = Rc::new(RefCell::new(Mmu::new(cartridge)));
+        let (spu, receiver) = Spu::new();
+        let mmu = Rc::new(RefCell::new(Mmu::new(cartridge, spu)));
         
         let cpu = Cpu::new(mmu.clone());
         let ppu = Ppu::new(mmu.clone());
-
-        Self {
+        
+        let gb = Self {
             cpu,
             mmu,
             ppu
-        }
+        };
+
+        (gb, receiver)
     }
 
     pub fn key_down(&mut self, key: Keycode) {
@@ -68,6 +74,8 @@ impl GameBoy {
         self.ppu.tick();
         
         let mut mmu = (*self.mmu).borrow_mut();
+
+        mmu.spu.tick();
         
         let request_timer_interupt = mmu.timer.tick();
         if request_timer_interupt {

@@ -20,7 +20,7 @@ macro_rules! blargg_test {
             d.push(format!("tests/roms/blargg/{}.gb", rom_num));
             let rom_str = d.to_str().unwrap();
 
-            let mut s = GameBoy::new(rom_str);
+            let (mut s, r) = GameBoy::new(rom_str);
 
             let cycles_to_run = CYCLES_PER_SCREEN_DRAW * 60 * $secs;
             for _ in 0..cycles_to_run {

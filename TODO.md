@@ -52,6 +52,9 @@ ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycle
 - https://timdaub.github.io/2020/02/19/wasm-synth/
 - https://news.ycombinator.com/item?id=27273706
 
+- https://gist.github.com/drhelius/3652407
+- https://stackoverflow.com/questions/15087668/how-to-convert-pcm-samples-in-byte-array-as-floating-point-numbers-in-the-range
+
 # Node FFI
 - https://stackoverflow.com/questions/36604010/how-can-i-build-multiple-binaries-with-cargo
 - https://www.reddit.com/r/rust/comments/jg1qm2/electron_rust_how_to_talk_to_each_other/
