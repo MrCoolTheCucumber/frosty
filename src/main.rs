@@ -172,7 +172,9 @@ fn main() {
         }
 
         if gb.is_some() && !turbo && !paused && (*audio_device).borrow().status() == AudioStatus::Playing {
-            while (*audio_device).borrow().size() > SAMPLES_PER_BUFFER as u32 * 4 { }
+            while (*audio_device).borrow().size() > SAMPLES_PER_BUFFER as u32 * 4 {
+                std::thread::sleep(Duration::from_millis(1));
+            }
         }
 
         let ui = imgui.frame();
@@ -241,7 +243,7 @@ fn main() {
             let percent = (fps / 59.7) * 100.0;
 
             comutative_speed.push_back(percent);
-            if comutative_speed.len() > 100 {
+            if comutative_speed.len() > 10 {
                 comutative_speed.pop_front();
             }
 
