@@ -22,6 +22,7 @@ pub struct Ppu {
     sprite_fetcher: SpriteFetcher,
 
     fifo_scx_skipped: u8,
+    fifo_wx_skipped: u8,
     fifo_wy_ly_equal: bool,
     fifo_current_x: usize,
     fifo_sprite_fetch: bool,
@@ -115,6 +116,7 @@ impl Ppu {
             sprite_fetcher,
 
             fifo_scx_skipped: 0,
+            fifo_wx_skipped: 0,
             fifo_current_x: 0,
             fifo_wy_ly_equal: false,
             fifo_sprite_fetch: false,
@@ -355,6 +357,7 @@ impl Ppu {
                     self.sprite_fetcher.reset();
 
                     self.fifo_scx_skipped = 0;
+                    self.fifo_wx_skipped = 0;
                     self.fifo_current_x = 0;
                     self.bg_fifo.clear();
                     self.sprite_fifo.clear();
@@ -448,10 +451,13 @@ impl Ppu {
         }
 
         let window_y = mmu.io[0x4A];
-        let window_x = mmu.io[0x4B].wrapping_sub(7);
+        // let window_x = mmu.io[0x4B].wrapping_sub(7);
+
+        // this should be signed, wx is 6 then bg is "shifted" offscreen
+        let window_x: i8 = mmu.io[0x4B] as i8 - 7;
 
         let window_enabled = ldlc_flags & LcdControlFlag::WindowEnable as u8 != 0;
-        let start_drawing_window = scan_line >= window_y && window_x == self.fifo_current_x as u8;
+        let start_drawing_window = scan_line >= window_y && window_x <= self.fifo_current_x as i8;
 
         // check if we need to switch bg/wd fifo to window mode
         if !self.fifo_wy_ly_equal && window_enabled && start_drawing_window {
@@ -474,6 +480,13 @@ impl Ppu {
         if !self.fifo_wy_ly_equal && self.fifo_scx_skipped < scroll_x & 7 {
             self.fifo_scx_skipped += 1;
             return false;
+        }
+
+        if self.fifo_wy_ly_equal && window_x < 0 {
+            if (window_x + self.fifo_wx_skipped as i8) < 0 {
+                self.fifo_wx_skipped += 1;
+                return false;
+            }
         }
 
         // if bg isn't enabled, and we're drawing the bg, then set color bit to 0
