@@ -25,6 +25,7 @@ ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycle
 # PPU Advanced
 - https://github.com/Powerlated/TurtleTests ?
 - https://github.com/mattcurrie/mealybug-tearoom-tests
+- https://discord.com/channels/465585922579103744/465586075830845475/849370511338635334
 - STAT IRQs and Blocking
 
 

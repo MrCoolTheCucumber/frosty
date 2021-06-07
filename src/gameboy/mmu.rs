@@ -192,6 +192,55 @@ impl Mmu {
                             return self.spu.get_nr24()
                         }
 
+                        else if addr == 0xFF1A {
+                            return self.spu.get_nr30();
+                        }
+
+                        else if addr == 0xFF1B {
+                            return self.spu.get_nr31();
+                        }
+
+                        else if addr == 0xFF1C {
+                            return self.spu.get_nr32();
+                        }
+
+                        else if addr == 0xFF1D {
+                            return self.spu.get_nr33();
+                        }
+
+                        else if addr == 0xFF1E {
+                            return self.spu.get_nr34();
+                        }
+
+                        else if addr >= 0xFF30 && addr <= 0xFF3F {
+                            return self.spu.get_sample((addr - 0xFF30) as u8);
+                        }
+
+                        else if addr == 0xFF20 {
+                            return self.spu.get_nr41()
+                        }
+
+                        else if addr == 0xFF21 {
+                            return self.spu.get_nr42()
+                        }
+
+                        else if addr == 0xFF22 {
+                            return self.spu.get_nr43()
+                        }
+                        
+
+                        else if addr == 0xFF23 {
+                            return self.spu.get_nr44()
+                        }
+
+                        else if addr == 0xFF24 {
+                            return self.spu.get_nr50();
+                        }
+
+                        else if addr == 0xFF25 {
+                            return self.spu.get_nr51();
+                        }
+
                         else if addr == 0xFF26 {
                             return self.spu.get_nr52();
                         }
@@ -381,6 +430,53 @@ impl Mmu {
 
                         else if addr == 0xFF19 {
                             self.spu.set_nr24(val);
+                        }
+
+                        else if addr == 0xFF1A {
+                            self.spu.set_nr30(val);
+                        }
+
+                        else if addr == 0xFF1B {
+                            self.spu.set_nr31(val);
+                        }
+
+                        else if addr == 0xFF1C {
+                            self.spu.set_nr32(val);
+                        }
+
+                        else if addr == 0xFF1D {
+                            self.spu.set_nr33(val);
+                        }
+
+                        else if addr == 0xFF1E {
+                            self.spu.set_nr34(val);
+                        }
+
+                        else if addr >= 0xFF30 && addr <= 0xFF3F {
+                            self.spu.set_sample((addr - 0xFF30) as u8, val);
+                        }
+
+                        else if addr == 0xFF20 {
+                            self.spu.set_nr41(val);
+                        }
+
+                        else if addr == 0xFF21 {
+                            self.spu.set_nr42(val);
+                        }
+
+                        else if addr == 0xFF22 {
+                            self.spu.set_nr43(val);
+                        }
+
+                        else if addr == 0xFF23 {
+                            self.spu.set_nr44(val);
+                        }
+
+                        else if addr == 0xFF24 {
+                            self.spu.set_nr50(val);
+                        }
+                        else if addr == 0xFF25 {
+                            self.spu.set_nr51(val);
                         }
 
                         else if addr == 0xFF26 {

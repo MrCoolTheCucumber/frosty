@@ -2,7 +2,7 @@ use super::MAX_VOLUME;
 
 
 #[derive(Clone, Copy)]
-pub(super) struct Envelope {
+pub struct Envelope {
     pub volume: u8,
     direction: EnvelopeDirection,
     step_duration: u32,

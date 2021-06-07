@@ -59,7 +59,7 @@ impl BgFetcher {
 
         // https://gbdev.io/pandocs/#fifo-pixel-fetcher
         match self.cycle {
-            1 | 3 | 5 | 7 => { } // NOP 
+            0 | 1 | 3 | 5 | 7 => { } // NOP 
 
             2 => {
                 // fetch tile number from tile map
@@ -143,8 +143,6 @@ impl BgFetcher {
                     self.tile_counter += 1;
                 }
             }
-
-            _ => unreachable!()
         }
     }
 }

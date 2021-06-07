@@ -1,14 +1,14 @@
 use super::{Mode, Sample, envelope::Envelope};
 
 
-pub(super) struct SquareWave {
+pub struct SquareWave {
     pub duty: Duty,
-    envelope: Envelope,
+    pub envelope: Envelope,
     pub start_envelope: Envelope,
     pub freq: u16,
     pub mode: Mode,
 
-    enabled: bool,
+    pub enabled: bool,
     remaining: u32,
     counter: u16,
     phase: u8,
@@ -87,6 +87,10 @@ impl SquareWave {
         }
     }
 
+    pub fn is_dac_enabled(&self) -> bool {
+        self.envelope.enabled()
+    }
+
     pub fn start(&mut self) {
         self.envelope = self.start_envelope;
         self.enabled = self.envelope.enabled();
@@ -94,7 +98,7 @@ impl SquareWave {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum Duty {
+pub enum Duty {
     D12 = 0,
     D25 = 1,
     D50 = 2,
@@ -124,7 +128,7 @@ impl Duty {
     }
 }
 
-pub(super) struct Sweep {
+pub struct Sweep {
     duration: u32,
     direction: SweepDirection,
     sweep_shift: u8,

@@ -512,7 +512,7 @@ impl Cpu {
                 }
 
                 let s = format!("PC:{:#06X} OP:{:#04X} {}", self.pc - 1, opcode, instr_human_readable);
-                println!("{}                             {:?}", s, self);
+                // println!("{}                             {:?}", s, self);
                 if self.log.is_some() {
                     self.log.as_ref().unwrap().write(format!("{} \n", s).as_ref()).unwrap();
                     //self.log.as_ref().unwrap().write(format!("{:?} \n", self).as_ref()).unwrap();

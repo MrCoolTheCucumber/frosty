@@ -28,7 +28,7 @@ fn main() {
 
     let desired_spec = AudioSpecDesired {
         freq: Some(48000 as i32),
-        channels: Some(1),
+        channels: Some(2),
         samples: Some(SAMPLES_PER_BUFFER as u16)
     };
 
