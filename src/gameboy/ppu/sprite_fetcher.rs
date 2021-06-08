@@ -49,7 +49,7 @@ impl SpriteFetcher {
                     let base = if sprite_size == 16 { 30 } else { 14 };
                     base - ((scan_line - (sprite.y - 16)) as u16 * 2)
                 } else {
-                    (scan_line - (sprite.y - 16)) as u16 * 2
+                    (scan_line.wrapping_sub(sprite.y.wrapping_sub(16))) as u16 * 2
                 };
 
                 self.tile_addr = 0x8000 + (sprite.tile_num * 16) + tile_y;

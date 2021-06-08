@@ -94,7 +94,7 @@ impl Spu {
         let mut buffer = [0.0; SAMPLES_PER_BUFFER];
 
         for i in 0..SAMPLES_PER_BUFFER {
-            buffer[i] = self.buffer[i] / 10.0;
+            buffer[i] = self.buffer[i] / 6.0;
         }
 
         if self.device.is_some() {

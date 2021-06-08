@@ -451,13 +451,17 @@ impl Ppu {
         }
 
         let window_y = mmu.io[0x4A];
-        // let window_x = mmu.io[0x4B].wrapping_sub(7);
 
-        // this should be signed, wx is 6 then bg is "shifted" offscreen
-        let window_x: i8 = mmu.io[0x4B] as i8 - 7;
+        let wx = mmu.io[0x4B];
+        let window_x: i16 = 
+            if wx >= 7 {
+                (wx - 7) as i16
+            } else {
+                (wx as i8 - 7) as i16
+            };
 
         let window_enabled = ldlc_flags & LcdControlFlag::WindowEnable as u8 != 0;
-        let start_drawing_window = scan_line >= window_y && window_x <= self.fifo_current_x as i8;
+        let start_drawing_window = scan_line >= window_y && window_x <= self.fifo_current_x as i16;
 
         // check if we need to switch bg/wd fifo to window mode
         if !self.fifo_wy_ly_equal && window_enabled && start_drawing_window {
@@ -482,8 +486,8 @@ impl Ppu {
             return false;
         }
 
-        if self.fifo_wy_ly_equal && window_x < 0 {
-            if (window_x + self.fifo_wx_skipped as i8) < 0 {
+        if self.fifo_wy_ly_equal && window_x < 0 && self.fifo_wx_skipped < 7 {
+            if (window_x + self.fifo_wx_skipped as i16) < 0 {
                 self.fifo_wx_skipped += 1;
                 return false;
             }

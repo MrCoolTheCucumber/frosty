@@ -56,7 +56,7 @@ ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycle
 - https://gist.github.com/drhelius/3652407
 - https://stackoverflow.com/questions/15087668/how-to-convert-pcm-samples-in-byte-array-as-floating-point-numbers-in-the-range
 
-- AUDIO POPS ARE HAPPENING BECAUSE AUDIO SIGNAL IS NOT "CENTERED" TO 0, ITS CENTERED TO -128. RE-DO SAMPLE ADJUSTMENT PIPELINE
+- https://stackoverflow.com/questions/24449957/converting-a-8-bit-pcm-to-16-bit-pcm
 
 # Node FFI
 - https://stackoverflow.com/questions/36604010/how-can-i-build-multiple-binaries-with-cargo

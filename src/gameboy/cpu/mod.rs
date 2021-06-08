@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fmt, fs::File, io::Write, rc::Rc};
+use std::{cell::RefCell, fmt, fs::File, io::Write, rc::Rc, time::{SystemTime, UNIX_EPOCH}};
 use crate::gameboy::cpu::disassembler::disassemble_cb_prefix_op;
 
 use self::disassembler::{Instruction, InstructionStep, disassemble};
@@ -43,6 +43,7 @@ pub struct Cpu {
     ei_delay: bool,
 
     debug: bool,
+    pub start_log: bool,
     log: Option<File>
 }
 
@@ -63,7 +64,7 @@ impl fmt::Debug for Cpu {
 
 impl Cpu {
     pub fn new(mmu: Rc<RefCell<Mmu>>) -> Self {
-        let log = false;
+        let log = true;
         let mut file: Option<File> = None;
         if log {
             file = Some(File::create("I:\\Dev\\gameboy-rs\\log.txt").unwrap());
@@ -98,7 +99,8 @@ impl Cpu {
             halt_bug: false,
             ei_delay: false,
 
-            debug: false,
+            debug: true,
+            start_log: false,
             log: file
         }
     }
@@ -495,7 +497,7 @@ impl Cpu {
                 (*self.mmu).borrow_mut().interupts.enable_master();
             }
 
-            if false {
+            if self.start_log {
                 let mut instr_human_readable = instruction.human_readable.clone();
 
                 if instr_human_readable.contains("u8") {
@@ -511,12 +513,17 @@ impl Cpu {
                     instr_human_readable = instr_human_readable.replace("u16", format!("{:#06X}", op16).as_ref());
                 }
 
-                let s = format!("PC:{:#06X} OP:{:#04X} {}", self.pc - 1, opcode, instr_human_readable);
-                // println!("{}                             {:?}", s, self);
+                let start = SystemTime::now();
+                let since_the_epoch = start
+                    .duration_since(UNIX_EPOCH)
+                    .expect("Time went backwards");
+                    
+                let s = format!("{:?}## PC:{:#06X} OP:{:#04X} {}", since_the_epoch, self.pc - 1, opcode, instr_human_readable);
+                // println!("{}", s);
                 if self.log.is_some() {
                     self.log.as_ref().unwrap().write(format!("{} \n", s).as_ref()).unwrap();
-                    //self.log.as_ref().unwrap().write(format!("{:?} \n", self).as_ref()).unwrap();
-                    //self.log.as_ref().unwrap().write("\n".as_ref()).unwrap();
+                    self.log.as_ref().unwrap().write(format!("{:?} \n", self).as_ref()).unwrap();
+                    self.log.as_ref().unwrap().write("\n".as_ref()).unwrap();
                 }
             }
 

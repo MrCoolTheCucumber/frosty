@@ -71,8 +71,12 @@ impl GameBoy {
         self.ppu.draw_flag = false;
     }
 
-    pub fn tick(&mut self) {
-        if self.cpu.stopped { return }
+    pub fn start_log(&mut self) {
+        self.cpu.start_log = true;
+    }
+
+    pub fn tick(&mut self) -> bool {
+        if self.cpu.stopped { return true }
 
         self.cpu.tick();
         self.ppu.tick();
@@ -87,5 +91,7 @@ impl GameBoy {
         }
 
         Interupt::handle(&mut mmu.interupts, &mut self.cpu);
+
+        self.cpu.stopped
     }
 }

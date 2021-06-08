@@ -158,8 +158,9 @@ fn main() {
 
         if gb.is_some() && !paused {
             let gb = gb.as_mut().unwrap();
-            while !gb.get_draw_flag() {
-                gb.tick();
+            let mut stopped: bool = false;
+            while !gb.get_draw_flag() && !stopped {
+                stopped = gb.tick();
             }
 
             render_gb(gb, fb_id, tex_id);
@@ -215,6 +216,12 @@ fn main() {
                                 } else {
                                     (*audio_device).borrow().resume();
                                 }
+                            }
+                        }
+
+                        if MenuItem::new(im_str!("Start log")).build(&ui) {
+                            if gb.is_some() {
+                                gb.as_mut().unwrap().start_log();
                             }
                         }
 

@@ -9,10 +9,10 @@ Frosty is a GameBoy emulator written in rust.
 
 
 ## TODO:
-- Implement Sound
-- Implement all cartridge types (only some are implemented right now)
-- Implement correct sprite draw timings
-- STAT IRQ Blocking
+- Improve ppu timings
+- Re-implement sound. Current sound is ok, but its missing a lot of the required quirks.
+- Implement all cartridge types. Currently ROM and MBC1/3/5  (which is a lot to be fair)
+- Pass the sub-instruction timing tests (completely uselses? but nice to have). This is very easy to do.
 
 ## Tests
 All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 ppu test!

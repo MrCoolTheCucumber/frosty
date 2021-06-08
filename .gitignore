@@ -1,5 +1,7 @@
 .vscode/
 /target
 **/*.gb
+**/*.sav
 
+log.txt
 NOTES.md
