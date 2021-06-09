@@ -111,6 +111,11 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - [ ] reti_timing
 - [ ] rst_timing
 
+### TurtleTests
+
+- [x] window_y_trigger
+- [x] window_y_trigger_wx_offscreen
+
 ## References Used
 - https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
 - https://gb-archive.github.io/salvage/decoding_gbz80_opcodes/Decoding%20Gamboy%20Z80%20Opcodes.html

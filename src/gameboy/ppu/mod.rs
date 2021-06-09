@@ -32,6 +32,8 @@ pub struct Ppu {
     line_clock_cycles: u64,
     frame_clock_cycles: u64,
 
+    wy_ly_equality_latch: bool,
+
     pub draw_flag: bool
 }
 
@@ -125,6 +127,8 @@ impl Ppu {
             mode_clock_cycles: 0,
             line_clock_cycles: 0,
             frame_clock_cycles: 0,
+
+            wy_ly_equality_latch: false,
 
             draw_flag: false
         }
@@ -271,6 +275,9 @@ impl Ppu {
                         self.mode_clock_cycles = 0;
                         self.frame_clock_cycles = 0;
                         self.window_internal_line_counter = 0;
+
+                        // wy == ly latch is reset in VBlank
+                        self.wy_ly_equality_latch = false;
                         
                         self.set_mode_lcdc(PpuMode::OAM);
                         self.mode = PpuMode::OAM;
@@ -280,6 +287,16 @@ impl Ppu {
             
             // 2
             PpuMode::OAM => {
+                if self.mode_clock_cycles == 1 {
+                    // handle wy_ly latch
+                    let mmu = (*self.mmu).borrow();
+                    let window_y = mmu.io[0x4A];
+                    let scan_line = self.get_scan_line();
+                    if !self.wy_ly_equality_latch {
+                        self.wy_ly_equality_latch = window_y == scan_line;
+                    }
+                }
+
                 if self.mode_clock_cycles == 80 {
                     // do we need cycle accurate oam fetching?
                     // prob not as oam technically isn't writable during
@@ -450,8 +467,6 @@ impl Ppu {
             }
         }
 
-        let window_y = mmu.io[0x4A];
-
         let wx = mmu.io[0x4B];
         let window_x: i16 = 
             if wx >= 7 {
@@ -461,7 +476,9 @@ impl Ppu {
             };
 
         let window_enabled = ldlc_flags & LcdControlFlag::WindowEnable as u8 != 0;
-        let start_drawing_window = scan_line >= window_y && window_x <= self.fifo_current_x as i16;
+        let start_drawing_window = 
+            self.wy_ly_equality_latch && 
+            window_x <= self.fifo_current_x as i16;
 
         // check if we need to switch bg/wd fifo to window mode
         if !self.fifo_wy_ly_equal && window_enabled && start_drawing_window {
