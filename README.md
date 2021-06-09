@@ -78,13 +78,13 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
     - [x] tima_reload
     - [x] tima_write_reloading
     - [x] tma_write_reloading
-- [ ] add_sp_e_timing
+- [x] add_sp_e_timing
 - [x] boot_div-dmgABCmgb
 - [ ] boot_hwio-dmgABCmgb (might require stat ir blocking?)
 - [x] boot_regs-dmgABC
-- [ ] call_cc_timing
+- [x] call_cc_timing
 - [ ] call_cc_timing2
-- [ ] call_timing
+- [x] call_timing
 - [ ] call_timing2
 - [x] di_timing
 - [x] div_timing
@@ -94,21 +94,21 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - [x] halt_ime0_nointr_timing
 - [x] halt_ime1_timing
 - [x] halt_ime1_timing2
-- [ ] if_ie_registers
+- [x] if_ie_registers
 - [x] intr_timing
-- [ ] jp_cc_timing
-- [ ] jp_timing
-- [ ] ld_hl_sp_e_timing
-- [ ] oam_dma_restart
-- [ ] oam_dma_start
-- [ ] oam_dma_timing
+- [x] jp_cc_timing
+- [x] jp_timing
+- [x] ld_hl_sp_e_timing
+- [x] oam_dma_restart
+- [x] oam_dma_start
+- [x] oam_dma_timing
 - [ ] pop_timing
 - [ ] push_timing
 - [ ] rapid_di_ei
-- [ ] ret_cc_timing
-- [ ] ret_timing
-- [ ] reti_intr_timing
-- [ ] reti_timing
+- [x] ret_cc_timing
+- [x] ret_timing
+- [x] reti_intr_timing
+- [x] reti_timing
 - [ ] rst_timing
 
 ### TurtleTests

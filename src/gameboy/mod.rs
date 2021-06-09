@@ -82,7 +82,7 @@ impl GameBoy {
         self.ppu.tick();
         
         let mut mmu = (*self.mmu).borrow_mut();
-
+        mmu.dma_tick();
         mmu.spu.tick();
         
         let request_timer_interupt = mmu.timer.tick();

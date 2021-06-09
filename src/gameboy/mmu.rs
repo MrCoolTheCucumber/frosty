@@ -21,7 +21,16 @@ pub struct Mmu {
     pub sprite_palette: [[u8; 4]; 2],
 
     pub tileset: [[[u8; 8]; 8]; 384],
-    pub bg_palette: [u8; 4]
+    pub bg_palette: [u8; 4],
+
+    dma_transfer_index: u16,
+    dma_transfer_base_addr: u16,
+
+    dma_queue_counter: u8,
+    dma_queue_val: u16,
+
+    dma_active: bool,
+    dma_active_clock: u8
 }
 
 impl Mmu {
@@ -48,7 +57,16 @@ impl Mmu {
             tileset: [[[0; 8]; 8]; 384],
             bg_palette: [
                 PALETTE[0], PALETTE[1], PALETTE[2], PALETTE[3]
-            ]
+            ],
+
+            dma_transfer_base_addr: 0,
+            dma_transfer_index: 0,
+
+            dma_queue_counter: 0,
+            dma_queue_val: 0,
+
+            dma_active: false,
+            dma_active_clock: 0
         };
 
         // set up zero page mem
@@ -116,9 +134,11 @@ impl Mmu {
                         if addr < 0xFEA0 {
                             // if we are in mode 2, return 0xFF
                             let mode = self.io[0x41] & 3;
-                            if mode == 3 || mode == 2 {
-                                return 0xFF;
-                            }
+                            // if mode == 3 || mode == 2 {
+                            //     return 0xFF;
+                            // }
+
+                            if self.dma_active { return 0xFF }
 
                             return self.sprite_table[(addr - 0xFE00) as usize];
                         }
@@ -361,12 +381,13 @@ impl Mmu {
                         }
 
                         else if addr == 0xFF46 {
-                            let source_addr: u16 = (val as u16) << 8;
+                            // let source_addr: u16 = (val as u16) << 8;
 
-                            for i in 0..160 {
-                                let src_val = self.read_byte(source_addr + i);
-                                self.write_byte(0xFE00 + i, src_val);
-                            }
+                            // for i in 0..160 {
+                            //     let src_val = self.read_byte(source_addr + i);
+                            //     self.write_byte(0xFE00 + i, src_val);
+                            // }
+                            self.dma_queue(val);
 
                             self.io[0x46] = val;
                         }
@@ -520,5 +541,41 @@ impl Mmu {
 
         self.write_byte(addr, lower_val);
         self.write_byte(addr + 1, higher_val);
+    }
+
+    pub fn dma_queue(&mut self, val: u8) {
+        self.dma_queue_val = val as u16;
+        self.dma_queue_counter = 5;
+    }
+    
+    pub fn dma_tick(&mut self) {
+        // tick transfer, if active
+        if self.dma_active {
+            self.dma_active_clock += 1;
+
+            if self.dma_active_clock == 4 { 
+                let src_val = self.read_byte(self.dma_transfer_base_addr + self.dma_transfer_index);
+                self.sprite_table[self.dma_transfer_index as usize] = src_val;
+                self.dma_transfer_index += 1;
+    
+                if self.dma_transfer_index == 160 {
+                    self.dma_active = false;
+                }
+
+                self.dma_active_clock = 0;
+            }
+        }
+
+        // tick queue
+        if self.dma_queue_counter > 0 {
+            self.dma_queue_counter -= 1;
+    
+            if self.dma_queue_counter == 0 {
+                self.dma_transfer_base_addr = self.dma_queue_val << 8;
+                self.dma_transfer_index = 0;
+                self.dma_active = true;
+                self.dma_active_clock = 0;
+            }
+        }
     }
 }
