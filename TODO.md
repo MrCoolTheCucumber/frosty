@@ -4,7 +4,7 @@
 - Am I handling interupts in the correct order if more than 1 are valid to fire?
 - really need start irq blocking implemented probs
 
-- Switch to SDL2/OpenGL? http://nercury.github.io/rust/opengl/tutorial/2018/02/08/opengl-in-rust-from-scratch-01-window.html
+- https://daid.github.io/GBEmulatorShootout/
 
 https://github.com/Gekkio/mooneye-gb/tree/master/tests/acceptance
 https://gekkio.fi/files/mooneye-gb/latest/tests/acceptance/
@@ -27,6 +27,7 @@ ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycle
 - https://github.com/mattcurrie/mealybug-tearoom-tests
 - https://discord.com/channels/465585922579103744/465586075830845475/849370511338635334
 - STAT IRQs and Blocking
+- https://github.com/mattcurrie/cgb-acid-hell
 
 
 # Sound
@@ -57,6 +58,8 @@ ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycle
 - https://stackoverflow.com/questions/15087668/how-to-convert-pcm-samples-in-byte-array-as-floating-point-numbers-in-the-range
 
 - https://stackoverflow.com/questions/24449957/converting-a-8-bit-pcm-to-16-bit-pcm
+
+- https://github.com/LIJI32/SameSuite/tree/master/apu
 
 # Node FFI
 - https://stackoverflow.com/questions/36604010/how-can-i-build-multiple-binaries-with-cargo
