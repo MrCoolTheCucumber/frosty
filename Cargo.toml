@@ -14,6 +14,7 @@ imgui-sdl2 = "0.14.0"
 gl = "0.14.0"
 imgui-opengl-renderer = "0.11"
 nfd2 = "0.3.0"
+rand = "0.8"
 
 [profile.test]
 opt-level = 3

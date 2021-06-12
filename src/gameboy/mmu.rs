@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use super::{cartridge::Cartridge, input::Input, interupt::{InterruptFlag, Interupt}, spu::Spu, timer::Timer};
 
 const PALETTE: [u8; 4] = [
@@ -69,6 +71,9 @@ impl Mmu {
             dma_active_clock: 0
         };
 
+        mmu.randomize_ram_values();
+        mmu.setup_uninit_ram();
+
         // set up zero page mem
         mmu.write_byte(0xFF10, 0x80);
         mmu.write_byte(0xFF11, 0xBF);
@@ -91,6 +96,31 @@ impl Mmu {
         mmu.write_byte(0xFF49, 0xFF);
 
         mmu
+    }
+
+    fn randomize_ram_values(&mut self) {
+        let mut rng = rand::thread_rng();
+        
+        for val in &mut self.working_ram {
+            *val = rng.gen_range(0..=u8::MAX);
+        }
+    }
+
+    fn setup_uninit_ram(&mut self) {
+        let addresses: Vec<usize> = vec![
+            // K = A, L = B, M = C, N = D, O = E, P = F
+            0x03, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E,
+            0x15, 0x1F, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 
+            0x2D, 0x2E, 0x2F, 0x4D, 0x4E, 0x4F, 0x57
+        ];
+
+        for addr in &addresses {
+            self.io[*addr] = 0xFF;
+        }
+
+        for i in 0x50..=0x7F {
+            self.io[i] = 0xFF;
+        }
     }
 
     pub fn read_byte(&self, addr: u16) -> u8 {
@@ -171,7 +201,7 @@ impl Mmu {
                             return self.zero_page[(addr - 0xFF80) as usize]
                         }
 
-                        else if addr >= 0xFF03 && addr <= 0xFF07 {
+                        else if addr >= 0xFF04 && addr <= 0xFF07 {
                             return self.timer.read(addr)
                         }
 
