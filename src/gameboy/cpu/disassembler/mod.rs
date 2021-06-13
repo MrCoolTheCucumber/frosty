@@ -856,17 +856,33 @@ fn dissassemble_x_3(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
         1 => {
             match q {
                 0 => {
+                    // e.g. pop bc, b is low byte, c is high byte
+
                     let reg_pair_2_val = RegisterPair2::from_u8(p);
-                    // blank instruction to fake 8t POP
-                    steps.push_back(InstructionStep::Standard(Box::new(|_cpu|{})));
-                    steps.push_back(InstructionStep::Standard(Box::new(move |cpu| {
-                        let val = cpu.read_word_from_stack();
+                    
+                    steps.push_back(InstructionStep::Standard(Box::new(move |cpu: &mut Cpu| {
+                        let low = cpu.read_byte_from_stack();
+
                         match reg_pair_2_val {
-                            RegisterPair2::BC => cpu.set_bc(val),
-                            RegisterPair2::DE => cpu.set_de(val),
-                            RegisterPair2::HL => cpu.set_hl(val),
+                            RegisterPair2::BC => cpu.c = low,
+                            RegisterPair2::DE => cpu.e = low,
+                            RegisterPair2::HL => cpu.l = low,
                             RegisterPair2::AF => { 
-                                cpu.set_af(val);
+                                cpu.f = low;
+                                cpu.f = cpu.f & 0xF0;
+                            },
+                        }
+                    })));
+
+                    steps.push_back(InstructionStep::Standard(Box::new(move |cpu: &mut Cpu| {
+                        let high = cpu.read_byte_from_stack();
+                        
+                        match reg_pair_2_val {
+                            RegisterPair2::BC => cpu.b = high,
+                            RegisterPair2::DE => cpu.d = high,
+                            RegisterPair2::HL => cpu.h = high,
+                            RegisterPair2::AF => { 
+                                cpu.a = high;
                                 cpu.f = cpu.f & 0xF0;
                             },
                         }

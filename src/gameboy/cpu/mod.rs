@@ -460,6 +460,12 @@ impl Cpu {
         val
     }
 
+    fn read_byte_from_stack(&mut self) -> u8 {
+        let val: u8 = (*self.mmu).borrow().read_byte(self.sp);
+        self.sp += 1;
+        val
+    }
+
     // MISC
 
     pub(super) fn set_pc(&mut self, pc: u16) {
