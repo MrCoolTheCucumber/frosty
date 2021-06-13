@@ -449,6 +449,11 @@ impl Cpu {
         (*self.mmu).borrow_mut().write_word(self.sp, val);
     }
 
+    fn write_byte_to_stack(&mut self, val: u8) {
+        self.sp = self.sp.wrapping_sub(1);
+        (*self.mmu).borrow_mut().write_byte(self.sp, val);
+    }
+
     fn read_word_from_stack(&mut self) -> u16 {
         let val: u16 = (*self.mmu).borrow().read_word(self.sp);
         self.sp += 2;

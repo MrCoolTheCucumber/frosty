@@ -350,6 +350,8 @@ impl Mmu {
                     },
 
                     0x0E00 => {
+                        if self.dma_active { return; }
+
                         if addr < 0xFEA0 {
                             self.sprite_table[(addr - 0xFE00) as usize] = val;
                         }

@@ -83,7 +83,7 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - [ ] boot_hwio-dmgABCmgb (might require stat ir blocking?)
 - [x] boot_regs-dmgABC
 - [x] call_cc_timing
-- [ ] call_cc_timing2
+- [x] call_cc_timing2
 - [x] call_timing
 - [ ] call_timing2
 - [x] di_timing
