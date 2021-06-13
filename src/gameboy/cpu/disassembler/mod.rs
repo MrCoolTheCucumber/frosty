@@ -1142,10 +1142,11 @@ fn dissassemble_x_3(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
                             steps.push_back(InstructionStep::Standard(Box::new(|_cpu |{})));
                             // 20
                             steps.push_back(InstructionStep::Standard(Box::new(|cpu: &mut Cpu| {
-                                cpu.write_word_to_stack(cpu.pc);
+                                cpu.write_byte_to_stack((cpu.pc >> 8) as u8);
                             })));
                             // 24
                             steps.push_back(InstructionStep::Standard(Box::new(|cpu: &mut Cpu| {
+                                cpu.write_byte_to_stack(cpu.pc as u8);
                                 cpu.pc = cpu.operand16;
                             })));
 
