@@ -204,7 +204,7 @@ impl Ppu {
     pub fn tick(&mut self) {
         {
             let mut mmu = (*self.mmu).borrow_mut();
-            if mmu.io[0x40] >> 7 == 0 {
+            if mmu.io[0x40] >> 7 == 0 && !self.reset {
                 self.mode_clock_cycles = 0;
                 self.line_clock_cycles = 0;
                 self.frame_clock_cycles = 0;
