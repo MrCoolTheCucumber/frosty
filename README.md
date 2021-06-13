@@ -103,13 +103,13 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - [x] oam_dma_start
 - [x] oam_dma_timing
 - [x] pop_timing
-- [ ] push_timing
+- [x] push_timing
 - [ ] rapid_di_ei
 - [x] ret_cc_timing
 - [x] ret_timing
 - [x] reti_intr_timing
 - [x] reti_timing
-- [ ] rst_timing
+- [x] rst_timing
 
 ### TurtleTests
 

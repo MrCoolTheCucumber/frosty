@@ -1127,17 +1127,28 @@ fn dissassemble_x_3(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
 
                     // 8 (blank)
                     steps.push_back(InstructionStep::Standard(Box::new(|_cpu |{})));
-                    // 12 (blank)
-                    steps.push_back(InstructionStep::Standard(Box::new(|_cpu |{})));
+
+                    steps.push_back(InstructionStep::Standard(Box::new(move |cpu: &mut Cpu | {
+                        let val = match reg {
+                            RegisterPair2::BC => cpu.b,
+                            RegisterPair2::DE => cpu.d,
+                            RegisterPair2::HL => cpu.h,
+                            RegisterPair2::AF => cpu.a,
+                        };
+
+                        cpu.write_byte_to_stack(val);
+                    })));
+
                     // 16
                     steps.push_back(InstructionStep::Standard(Box::new(move |cpu: &mut Cpu | {
                         let val = match reg {
-                            RegisterPair2::BC => cpu.bc(),
-                            RegisterPair2::DE => cpu.de(),
-                            RegisterPair2::HL => cpu.hl(),
-                            RegisterPair2::AF => cpu.af(),
+                            RegisterPair2::BC => cpu.c,
+                            RegisterPair2::DE => cpu.e,
+                            RegisterPair2::HL => cpu.l,
+                            RegisterPair2::AF => cpu.f,
                         };
-                        cpu.write_word_to_stack(val);
+
+                        cpu.write_byte_to_stack(val);
                     })));
 
                     Instruction {
@@ -1218,12 +1229,13 @@ fn dissassemble_x_3(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
 
             // 12
             let write_pc_to_stack = InstructionStep::Standard(Box::new(|cpu: &mut Cpu| {
-                cpu.write_word_to_stack(cpu.pc);
+                cpu.write_byte_to_stack((cpu.pc >> 8) as u8);
             }));
             steps.push_back(write_pc_to_stack);
 
             // 16
             let jmp_step = InstructionStep::Standard(Box::new(move |cpu: &mut Cpu| {
+                cpu.write_byte_to_stack(cpu.pc as u8);
                 cpu.pc = arg as u16;
             }));
             steps.push_back(jmp_step);
