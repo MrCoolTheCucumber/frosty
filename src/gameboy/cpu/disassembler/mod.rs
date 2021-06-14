@@ -221,19 +221,19 @@ fn dissassemble_x_0(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
                     let reg_pair = RegisterPair1::from_u8(p);
                     let closure: Box<dyn Fn(&mut Cpu)> = Box::new(match reg_pair {
                         RegisterPair1::BC => |cpu| {
-                            let result = cpu.add_two_reg_u16(cpu.hl(), cpu.bc());
+                            let result = cpu.add_hl_r16(cpu.hl(), cpu.bc());
                             cpu.set_hl(result);
                         },
                         RegisterPair1::DE => |cpu| {
-                            let result = cpu.add_two_reg_u16(cpu.hl(), cpu.de());
+                            let result = cpu.add_hl_r16(cpu.hl(), cpu.de());
                             cpu.set_hl(result);
                         },
                         RegisterPair1::HL => |cpu| {
-                            let result = cpu.add_two_reg_u16(cpu.hl(), cpu.hl());
+                            let result = cpu.add_hl_r16(cpu.hl(), cpu.hl());
                             cpu.set_hl(result);
                         },
                         RegisterPair1::SP => |cpu| {
-                            let result = cpu.add_two_reg_u16(cpu.hl(), cpu.sp);
+                            let result = cpu.add_hl_r16(cpu.hl(), cpu.sp);
                             cpu.set_hl(result);
                         }
                     });

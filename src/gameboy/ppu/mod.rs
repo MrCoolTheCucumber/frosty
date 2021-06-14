@@ -34,7 +34,9 @@ pub struct Ppu {
 
     wy_ly_equality_latch: bool,
 
-    pub draw_flag: bool
+    pub draw_flag: bool,
+
+    ly_153_early: bool,
 }
 
 pub struct Sprite {
@@ -55,11 +57,23 @@ pub struct FifoPixel {
 }
 
 #[derive(Clone, Copy)]
-enum PpuMode {
+pub enum PpuMode {
     HBlank = 0, // mode 0
     VBlank = 1, // mode 1
     OAM    = 2, // mode 2, initial state
     VRAM   = 3  // mode 3
+}
+
+impl PpuMode {
+   pub fn from_u8(val: u8) -> Self {
+       match val {
+           0 => PpuMode::HBlank,
+           1 => PpuMode::VBlank,
+           2 => PpuMode::OAM,
+           3 => PpuMode::VRAM,
+           _ => panic!("Invalid PpuMode value when trying to parse value!")
+       }
+   }  
 }
 
 pub enum LcdControlFlag {
@@ -130,7 +144,9 @@ impl Ppu {
 
             wy_ly_equality_latch: false,
 
-            draw_flag: false
+            draw_flag: false,
+
+            ly_153_early: false
         }
     }
 
@@ -153,30 +169,6 @@ impl Ppu {
         let mut lcdc = mmu.io[0x41];
         lcdc = (lcdc & 0b11111100) | (mode as u8);
         mmu.io[0x41] = lcdc;
-
-        // check if we need to req a stat interupt
-        let stat = mmu.io[0x41];
-        match mode {
-            PpuMode::HBlank => {
-                if stat & 0b0000_1000 != 0 {
-                    mmu.interupts.request_interupt(InterruptFlag::Stat);
-                }
-            }
-
-            PpuMode::VBlank => {
-                if stat & 0b0001_0000 != 0 {
-                    mmu.interupts.request_interupt(InterruptFlag::Stat);
-                }
-            }
-
-            PpuMode::OAM => {
-                if stat & 0b0010_0000 != 0 {
-                    mmu.interupts.request_interupt(InterruptFlag::Stat);
-                }
-            }
-
-            PpuMode::VRAM => {}
-        }
     }
 
     fn get_lyc(&self) -> u8 {
@@ -187,19 +179,21 @@ impl Ppu {
         (*self.mmu).borrow().io[0x41] & 0b0100_0000 != 0
     }
 
-    fn get_bg_map_start_addr(ldlc_flags: u8) -> u16 {
-        match (ldlc_flags & LcdControlFlag::BGTileMapAddress as u8) != 0 {
-            true => 0x9C00,
-            false => 0x9800
+    fn check_ly_eq_lyc(&mut self) {
+        if self.get_scan_line() == self.get_lyc() {
+            let mut mmu = (self.mmu).borrow_mut();
+            mmu.io[0x41] = mmu.io[0x41] | 0b0000_0100;
+        } else {
+            let mut mmu = (self.mmu).borrow_mut();
+            mmu.io[0x41] = mmu.io[0x41] & !0b0000_0100;
         }
     }
 
-    fn get_window_map_start_addr(ldlc_flags: u8) -> u16 {
-        match (ldlc_flags & LcdControlFlag::WindowTileMapAddress as u8) != 0 {
-            true => 0x9C00,
-            false => 0x9800
-        }
+    fn update_stat_irq_conditions(&mut self, src: String) {
+        self.mmu.borrow_mut().update_stat_irq_conditions(src);
     }
+
+    const STAT_CHANGE_OFFSET: u64 = 4;
 
     pub fn tick(&mut self) {
         {
@@ -234,6 +228,11 @@ impl Ppu {
         match self.mode {
             // 0
             PpuMode::HBlank => {
+                if self.mode_clock_cycles == Self::STAT_CHANGE_OFFSET {
+                    self.set_mode_lcdc(PpuMode::HBlank);
+                    self.update_stat_irq_conditions(String::from("HBlank"));
+                }
+
                 if self.line_clock_cycles == 456 {
                     self.mode_clock_cycles = 0;
                     self.line_clock_cycles = 0;
@@ -242,18 +241,15 @@ impl Ppu {
                     // if scanline is 144, go to VBlank
                     // otherwise go to OAM (mode 2)
                     let current_scan_line = self.inc_scan_line();
-                    self.check_ly_eq_lyc();
 
                     if current_scan_line == 144 {
-                        (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::VBlank);
-                        self.set_mode_lcdc(PpuMode::VBlank);
                         self.mode = PpuMode::VBlank;
+                        self.check_ly_eq_lyc();
 
                         // notify safe draw
                         self.draw_flag = true;
                     }
                     else {
-                        self.set_mode_lcdc(PpuMode::OAM);
                         self.mode = PpuMode::OAM;
                     }
                 }
@@ -261,15 +257,32 @@ impl Ppu {
 
             // 1
             PpuMode::VBlank => {
+                if self.mode_clock_cycles == Self::STAT_CHANGE_OFFSET {
+                    (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::VBlank);
+                    self.set_mode_lcdc(PpuMode::VBlank);
+                    self.update_stat_irq_conditions(String::from("VBlank"));
+                }
+
+                let scan_line = self.get_scan_line();
+                
+                // 153 only lasts 4 cycles
+                if scan_line == 153 && self.line_clock_cycles == 4 {
+                    self.set_scan_line(0);
+                    self.check_ly_eq_lyc();
+                    self.update_stat_irq_conditions(String::from("LY 0"));
+                    self.ly_153_early = true;
+                }
+
                 if self.line_clock_cycles == 456 {
                     self.line_clock_cycles = 0;
 
-                    let new_scan_line = self.inc_scan_line();
-                    self.check_ly_eq_lyc();
                     
-                    if new_scan_line == 154 {
-                        self.set_scan_line(0);
+                    if scan_line < 153 && !self.ly_153_early {
+                        self.inc_scan_line();
                         self.check_ly_eq_lyc();
+                        self.update_stat_irq_conditions(String::from("LY"));
+                    } else {
+                        self.ly_153_early = false;
 
                         // starting a new frame so lets reset our state
                         self.mode_clock_cycles = 0;
@@ -279,7 +292,6 @@ impl Ppu {
                         // wy == ly latch is reset in VBlank
                         self.wy_ly_equality_latch = false;
                         
-                        self.set_mode_lcdc(PpuMode::OAM);
                         self.mode = PpuMode::OAM;
                     }
                 }
@@ -289,12 +301,20 @@ impl Ppu {
             PpuMode::OAM => {
                 if self.mode_clock_cycles == 1 {
                     // handle wy_ly latch
-                    let mmu = (*self.mmu).borrow();
+                    let mut mmu = (*self.mmu).borrow_mut();
                     let window_y = mmu.io[0x4A];
-                    let scan_line = self.get_scan_line();
+                    let scan_line = mmu.io[0x44];
                     if !self.wy_ly_equality_latch {
                         self.wy_ly_equality_latch = window_y == scan_line;
                     }
+
+                    mmu.io[0x41] = mmu.io[0x41] & !0b0000_0100;
+                }
+
+                if self.mode_clock_cycles == Self::STAT_CHANGE_OFFSET {
+                    self.set_mode_lcdc(PpuMode::OAM);
+                    self.update_stat_irq_conditions(String::from("OAM"));
+                    self.check_ly_eq_lyc();
                 }
 
                 if self.mode_clock_cycles == 80 {
@@ -381,7 +401,6 @@ impl Ppu {
                     self.fifo_wy_ly_equal = false;
                     self.fifo_sprite_fetch = false;
 
-                    self.set_mode_lcdc(PpuMode::VRAM);
                     self.mode = PpuMode::VRAM;
                 }
             }
@@ -393,24 +412,17 @@ impl Ppu {
                 // 172-289 clock cycles?
                 // for now lets just say 172
 
+                if self.mode_clock_cycles == Self::STAT_CHANGE_OFFSET {
+                    self.set_mode_lcdc(PpuMode::VRAM);
+                    self.update_stat_irq_conditions(String::from("VRAM"));
+                }
+
                 if self.fifo_tick() {
                     self.mode_clock_cycles = 0;
-                    //self.draw_scan_line(); // draw line!
-                    self.set_mode_lcdc(PpuMode::HBlank);
+
                     self.mode = PpuMode::HBlank;
                 }
             }
-        }
-    }
-
-    fn check_ly_eq_lyc(&mut self) {
-        if self.get_scan_line() == self.get_lyc() && self.lyc_check_enabled() {
-            let mut mmu = (self.mmu).borrow_mut();
-            mmu.interupts.request_interupt(InterruptFlag::Stat);
-            mmu.io[0x41] = mmu.io[0x41] | 0b0000_0100;
-        } else {
-            let mut mmu = (self.mmu).borrow_mut();
-            mmu.io[0x41] = mmu.io[0x41] & !0b0000_0100;
         }
     }
 
@@ -426,6 +438,20 @@ impl Ppu {
         }
         else {
             mmu.read_byte(addr) as u16
+        }
+    }
+
+    fn get_bg_map_start_addr(ldlc_flags: u8) -> u16 {
+        match (ldlc_flags & LcdControlFlag::BGTileMapAddress as u8) != 0 {
+            true => 0x9C00,
+            false => 0x9800
+        }
+    }
+
+    fn get_window_map_start_addr(ldlc_flags: u8) -> u16 {
+        match (ldlc_flags & LcdControlFlag::WindowTileMapAddress as u8) != 0 {
+            true => 0x9C00,
+            false => 0x9800
         }
     }
 

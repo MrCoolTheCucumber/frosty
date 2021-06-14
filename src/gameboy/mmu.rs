@@ -1,6 +1,6 @@
 use rand::Rng;
 
-use super::{cartridge::Cartridge, input::Input, interupt::{InterruptFlag, Interupt}, spu::Spu, timer::Timer};
+use super::{cartridge::Cartridge, input::Input, interupt::{InterruptFlag, Interupt}, ppu::PpuMode, spu::Spu, timer::Timer};
 
 const PALETTE: [u8; 4] = [
     255, 192, 96, 0
@@ -32,7 +32,9 @@ pub struct Mmu {
     dma_queue_val: u16,
 
     dma_active: bool,
-    dma_active_clock: u8
+    dma_active_clock: u8,
+
+    stat_irq_state: bool
 }
 
 impl Mmu {
@@ -68,7 +70,9 @@ impl Mmu {
             dma_queue_val: 0,
 
             dma_active: false,
-            dma_active_clock: 0
+            dma_active_clock: 0,
+
+            stat_irq_state: false
         };
 
         mmu.randomize_ram_values();
@@ -394,12 +398,7 @@ impl Mmu {
                             let stat = self.io[0x41];
                             self.io[0x41] = (stat & 0b1000_0111) | (val & 0b0111_1000);
 
-                            // re-check stat conds as if they are all enabled?
-                            let ppu_mode = self.io[0x41] & 0b0000_0011;
-                            let req_stat = ppu_mode < 3 || self.io[0x44] == self.io[0x45];
-                            if req_stat {
-                                self.interupts.request_interupt(InterruptFlag::Stat);
-                            }
+                            self.update_stat_irq_conditions(String::from("STAT WRITE"));
                         }
 
                         else if addr == 0xFF44 {
@@ -408,8 +407,11 @@ impl Mmu {
 
                         else if addr == 0xFF45 {
                             self.io[0x45] = val;
-                            if self.io[0x44] == val && self.io[0x41] & 0b0100_0000 != 0 {
-                                self.interupts.request_interupt(InterruptFlag::Stat);
+
+                            if val == self.io[0x44] {
+                                self.io[0x41] = self.io[0x41] | 0b0000_0100;
+                            } else {
+                                self.io[0x41] = self.io[0x41] & 0b1111_1011;
                             }
                         }
 
@@ -610,5 +612,55 @@ impl Mmu {
                 self.dma_active_clock = 0;
             }
         }
+    }
+
+    pub fn update_stat_irq_conditions(&mut self, src: String) {
+        let stat = self.io[0x41];
+        let mut stat_irq_state = false;
+
+        let mut debug = String::from("");
+
+        let mode = PpuMode::from_u8(stat & 0b0000_0011);
+        match mode {
+            PpuMode::HBlank => {
+                if stat & 0b0000_1000 != 0 {
+                    stat_irq_state = true;
+                    debug.push_str("Hblank ");
+                }
+            }
+
+            PpuMode::VBlank => {
+                if stat & 0b0001_0000 != 0 {
+                    stat_irq_state = true;
+                    debug.push_str("VBlank ");
+                }
+            }
+
+            PpuMode::OAM => {
+                if stat & 0b0010_0000 != 0 {
+                    stat_irq_state = true;
+                    debug.push_str("OAM ");
+                }
+            }
+
+            _ => {}
+        }
+
+        if stat & 0b0100_0000 != 0 {
+            let ly = self.io[0x44];
+            let lyc = self.io[0x45];
+
+            if ly == lyc {
+                stat_irq_state = true;
+                debug.push_str("LY=LYC ");
+            }
+        }
+
+        // rising edge
+        if !self.stat_irq_state && stat_irq_state {
+            self.interupts.request_interupt(InterruptFlag::Stat);
+        }
+
+        self.stat_irq_state = stat_irq_state;
     }
 }
