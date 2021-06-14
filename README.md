@@ -33,6 +33,8 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
     - [x] 10-bit ops
     - [x] 11-op a,(hl)
 - [x] instr_timing
+- [x] mem_timing
+- [x] mem_timing-2
 - [ ] halt_bug
 
 ### Hacktix scribbltests
