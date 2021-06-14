@@ -269,15 +269,15 @@ impl Cpu {
         self.a = result;
     }
 
-    fn add_two_reg_u16(&mut self, val1: u16, val2: u16) -> u16 {
-        let result = val1.wrapping_add(val2);
+    fn add_hl_r16(&mut self, hl: u16, r16: u16) -> u16 {
+        let result = hl.wrapping_add(r16);
 
         self.clear_flag(Flag::N);
 
-        let overflowed = val1.checked_add(val2).is_none();
+        let overflowed = hl.checked_add(r16).is_none();
         self.set_flag_if_cond_else_clear(overflowed, Flag::C);
 
-        let half_carry_occured = ((val1 & 0x7FF) + (val2 & 0x7FF)) > 0x7FF;
+        let half_carry_occured = ((hl & 0xFFF) + (r16 & 0xFFF)) > 0xFFF;
         self.set_flag_if_cond_else_clear(half_carry_occured, Flag::H);
 
         result
