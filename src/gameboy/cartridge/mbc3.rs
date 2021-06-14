@@ -91,7 +91,7 @@ impl Cartridge for MBC3 {
                 self.is_ram_rtc_enabled = (value & 0x0F) == 0x0A;
             }
 
-            0x2000 | 3000 => {
+            0x2000 | 0x3000 => {
                 self.current_rom_bank = (value & 0b0111_1111) as usize;
                 if self.current_rom_bank == 0 { 
                     self.current_rom_bank = 1

@@ -73,16 +73,16 @@ impl Cpu {
         Self {
             mmu,
 
-            a: 0x01,
+            a: 0x00,
             b: 0x00,
-            c: 0x13,
+            c: 0x00,
             d: 0x00,
-            e: 0xD8,
-            f: 0xB0,
-            h: 0x01,
-            l: 0x4D,
+            e: 0x00,
+            f: 0x00,
+            h: 0x00,
+            l: 0x00,
 
-            pc: 0x100,
+            pc: 0x0,
             sp: 0xFFFE,
 
             operand8: 0,
@@ -493,6 +493,14 @@ impl Cpu {
 
         if self.instruction.is_none() {
             let opcode = self.fetch();
+            
+            {
+                let mut mmu = self.mmu.borrow_mut();
+                if mmu.bios_enabled && self.pc >= 0x100{
+                    mmu.bios_enabled = false;
+                }
+            }
+
             if self.halt_bug {
                 self.pc -= 1;
                 self.halt_bug = false;

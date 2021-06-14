@@ -6,6 +6,8 @@
 
 - https://daid.github.io/GBEmulatorShootout/
 
+- IE top 3 bits are writable, IF top 3 bits always 1
+
 https://github.com/Gekkio/mooneye-gb/tree/master/tests/acceptance
 https://gekkio.fi/files/mooneye-gb/latest/tests/acceptance/
 https://github.com/Powerlated/TurtleTests
@@ -28,6 +30,7 @@ ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycle
 - https://discord.com/channels/465585922579103744/465586075830845475/849370511338635334
 - STAT IRQs and Blocking
 - https://github.com/mattcurrie/cgb-acid-hell
+- https://www.reddit.com/r/EmuDev/comments/8uahbc/dmg_bgb_lcd_timings_and_cnt/
 
 
 # Sound

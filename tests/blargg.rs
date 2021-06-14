@@ -46,11 +46,11 @@ blargg_test! {
     blarg_02: (5),
     blarg_03: (5),
     blarg_04: (5),
-    blarg_05: (5),
+    blarg_05: (10),
     blarg_06: (5),
     blarg_07: (5),
     blarg_08: (5),
-    blarg_09: (10),
+    blarg_09: (20),
     blarg_10: (20),
     blarg_11: (20),
 }

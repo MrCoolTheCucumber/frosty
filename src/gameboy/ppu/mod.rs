@@ -37,6 +37,8 @@ pub struct Ppu {
     pub draw_flag: bool,
 
     ly_153_early: bool,
+
+    just_powered_on: bool,
 }
 
 pub struct Sprite {
@@ -146,7 +148,9 @@ impl Ppu {
 
             draw_flag: false,
 
-            ly_153_early: false
+            ly_153_early: false,
+
+            just_powered_on: true,
         }
     }
 
@@ -212,7 +216,14 @@ impl Ppu {
 
         if self.reset {
             self.reset = false;
+            self.just_powered_on = true;
+            self.line_clock_cycles = 6;
+            self.mode_clock_cycles = 6;
+            self.frame_clock_cycles = 6;
             self.mode = PpuMode::OAM;
+
+            self.check_ly_eq_lyc();
+
             let mut mmu = (*self.mmu).borrow_mut();
 
             // So the mode in the stat flag should be zero after reset 
@@ -234,6 +245,7 @@ impl Ppu {
                 }
 
                 if self.line_clock_cycles == 456 {
+                    self.just_powered_on = false;
                     self.mode_clock_cycles = 0;
                     self.line_clock_cycles = 0;
                     
@@ -312,8 +324,11 @@ impl Ppu {
                 }
 
                 if self.mode_clock_cycles == Self::STAT_CHANGE_OFFSET {
-                    self.set_mode_lcdc(PpuMode::OAM);
-                    self.update_stat_irq_conditions(String::from("OAM"));
+                    if !self.just_powered_on {
+                        self.set_mode_lcdc(PpuMode::OAM);
+                        self.update_stat_irq_conditions(String::from("OAM"));
+                    }
+
                     self.check_ly_eq_lyc();
                 }
 
@@ -388,8 +403,6 @@ impl Ppu {
 
                     self.fifo_sprite_buffer_peek = self.fifo_sprite_buffer.pop_front();
 
-                    self.mode_clock_cycles = 0;
-
                     self.bg_fetcher.reset();
                     self.sprite_fetcher.reset();
 
@@ -401,6 +414,7 @@ impl Ppu {
                     self.fifo_wy_ly_equal = false;
                     self.fifo_sprite_fetch = false;
 
+                    self.mode_clock_cycles = 0;
                     self.mode = PpuMode::VRAM;
                 }
             }

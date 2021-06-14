@@ -41,7 +41,7 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - [x] lycscy
 - [x] palettely
 - [x] scxly
-- [ ] statcount 
+- [x] statcount 
 - [x] winpos
 
 ### DMG-Acid2
@@ -69,7 +69,7 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
     - [x] intr_2_mode0_timing
     - [ ] intr_2_mode0_timing_sprites
     - [x] intr_2_mode3_timing
-    - [ ] intr_2_oam_ok_timing
+    - [x] intr_2_oam_ok_timing
     - [ ] lcdon_timing-GS
     - [ ] lcdon_write_timing-GS
     - [x] stat_irq_blocking
