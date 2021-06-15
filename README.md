@@ -7,6 +7,18 @@ Frosty is a GameBoy emulator written in rust.
 ![image](https://user-images.githubusercontent.com/16002713/119415269-2b03c000-bce9-11eb-9185-022d400062cb.png)
 ![image](https://user-images.githubusercontent.com/16002713/119415428-833ac200-bce9-11eb-9253-2d06c72ff08a.png)
 
+## Controls
+
+| Button | Keyboard      |
+|--------|---------------|
+| A      | <kbd>O</kbd>  |
+| B      | <kbd>K</kbd>  |
+| START  | <kbd>M</kbd>  |
+| SELECT | <kbd>N</kbd>  |
+| UP     | <kbd>W</kbd>  |
+| DOWN   | <kbd>S</kbd>  |
+| LEFT   | <kbd>A</kbd>  |
+| RIGHT  | <kbd>D</kbd>  |
 
 ## TODO:
 - Improve ppu timings
