@@ -20,9 +20,7 @@ pub struct BgFetcher {
     reset_on_first_step_3: bool,
 
     low_data: u8,
-    high_data: u8,
-
-    current_scroll_y: u8
+    high_data: u8
 }
 
 impl BgFetcher {
@@ -39,9 +37,7 @@ impl BgFetcher {
             reset_on_first_step_3: false,
 
             low_data: 0,
-            high_data: 0,
-
-            current_scroll_y: 0
+            high_data: 0
         }
     }
 
@@ -56,8 +52,6 @@ impl BgFetcher {
 
         self.low_data = 0;
         self.high_data = 0;
-
-        self.current_scroll_y = 0;
     }
    
     pub fn tick(&mut self, pixel_fifo: &mut VecDeque<u8>, window_line_counter: u8) {
@@ -73,13 +67,13 @@ impl BgFetcher {
                 let ldlc_flags = mmu.io[0x40];
                 let scan_line = mmu.io[0x44];
                 let scroll_x: u8 = mmu.io[0x43];
-                self.current_scroll_y = mmu.io[0x42];
+                let scroll_y = mmu.io[0x42];
                 
                 let signed_tile_addressing: bool = ldlc_flags & LcdControlFlag::BGAndWindowTileData as u8 == 0;
 
                 let map_addr = match self.mode {
                     FetchMode::Background => {
-                        let tile_y = scan_line.wrapping_add(self.current_scroll_y) / 8;
+                        let tile_y = scan_line.wrapping_add(scroll_y) / 8;
                         let base_tile_map_offset = tile_y as u16 * 32;
 
                         Ppu::get_bg_map_start_addr(ldlc_flags) + base_tile_map_offset +
@@ -109,8 +103,9 @@ impl BgFetcher {
                 let offset = match self.mode {
                     FetchMode::Background => {
                         let scan_line = mmu.io[0x44];
+                        let scroll_y = mmu.io[0x42];
 
-                        (scan_line.wrapping_add(self.current_scroll_y) & 7) * 2
+                        (scan_line.wrapping_add(scroll_y) & 7) * 2
                     }
 
                     FetchMode::Window => {
