@@ -7,6 +7,12 @@ Frosty is a GameBoy emulator written in rust.
 ![image](https://user-images.githubusercontent.com/16002713/119415269-2b03c000-bce9-11eb-9185-022d400062cb.png)
 ![image](https://user-images.githubusercontent.com/16002713/119415428-833ac200-bce9-11eb-9253-2d06c72ff08a.png)
 
+## Features
+
+- Cycle accurate Cpu
+- Pretty decent (but not fully perfect) cycle accurate ppu with fifo implementation. 
+- Basic audio support (it could be better but its fine for now!)
+
 ## Controls
 
 | Button | Keyboard      |
@@ -20,11 +26,7 @@ Frosty is a GameBoy emulator written in rust.
 | LEFT   | <kbd>A</kbd>  |
 | RIGHT  | <kbd>D</kbd>  |
 
-## TODO:
-- Improve ppu timings
-- Re-implement sound. Current sound is ok, but its missing a lot of the required quirks.
-- Implement all cartridge types. Currently ROM and MBC1/3/5  (which is a lot to be fair)
-- Pass the sub-instruction timing tests (completely uselses? but nice to have). This is very easy to do.
+You can also press <kbd>TAB</kbd> to enable turbo, which will disable the frame limiter.
 
 ## Tests
 All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 ppu test!
@@ -143,6 +145,12 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 
 - [x] window_y_trigger
 - [x] window_y_trigger_wx_offscreen
+
+## TODO:
+- Improve ppu timings
+- Re-implement sound. Current sound is ok, but its missing a lot of the required quirks.
+- Implement all cartridge types. Currently ROM and MBC1/3/5  (which is a lot to be fair)
+- Pass the sub-instruction timing tests (completely uselses? but nice to have). This is very easy to do.
 
 ## References Used
 - https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
