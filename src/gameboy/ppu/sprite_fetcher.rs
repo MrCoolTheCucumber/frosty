@@ -53,12 +53,12 @@ impl SpriteFetcher {
                 };
 
                 self.tile_addr = 0x8000 + (sprite.tile_num * 16) + tile_y;
-                self.data_low = mmu.read_byte(self.tile_addr);
+                self.data_low = mmu.gpu_vram[(self.tile_addr - 0x8000) as usize];
             }
 
             4 => {
                 let mmu = (*self.mmu).borrow();
-                self.data_high = mmu.read_byte(self.tile_addr + 1);
+                self.data_high = mmu.gpu_vram[(self.tile_addr + 1 - 0x8000) as usize];
             }
             
 

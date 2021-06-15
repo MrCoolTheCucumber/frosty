@@ -13,7 +13,7 @@ pub struct Mmu {
     pub timer: Timer,
     cartridge: Box<dyn Cartridge>,
 
-    gpu_vram: [u8; 0x2000],
+    pub gpu_vram: [u8; 0x2000],
     working_ram: [u8; 0x2000],
 
     pub io: [u8; 0x100],
@@ -168,7 +168,10 @@ impl Mmu {
 
             // vram
             0x8000 | 0x9000 => {
-                self.gpu_vram[(addr - 0x8000) as usize]
+                match self.current_ppu_mode() {
+                    PpuMode::VRAM => { return 0xFF }
+                    _ => self.gpu_vram[(addr - 0x8000) as usize]
+                }
             }
             
             // cart ram
@@ -368,6 +371,17 @@ impl Mmu {
 
             // vram
             0x8000 | 0x9000 => {
+                match self.current_ppu_mode() {
+                    PpuMode::VRAM => { 
+                        // temp bios check for the hacktix boot img
+                        // otherwise the nintendo logo is corrupted
+                        if !self.bios_enabled {
+                            return;
+                        } 
+                    }
+                    _ => {}
+                }
+
                 self.gpu_vram[(addr - 0x8000) as usize] = val;
             }
 
@@ -458,14 +472,7 @@ impl Mmu {
                         }
 
                         else if addr == 0xFF46 {
-                            // let source_addr: u16 = (val as u16) << 8;
-
-                            // for i in 0..160 {
-                            //     let src_val = self.read_byte(source_addr + i);
-                            //     self.write_byte(0xFE00 + i, src_val);
-                            // }
                             self.dma_queue(val);
-
                             self.io[0x46] = val;
                         }
 

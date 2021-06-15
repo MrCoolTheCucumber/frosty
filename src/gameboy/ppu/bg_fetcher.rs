@@ -114,7 +114,7 @@ impl BgFetcher {
                 };
 
                 self.tile_data_addr = 0x8000 + (self.tile_num * 16) + (offset as u16);
-                self.low_data = mmu.read_byte(self.tile_data_addr);
+                self.low_data = mmu.gpu_vram[(self.tile_data_addr - 0x8000) as usize];
             }
 
             6 => {
@@ -126,7 +126,7 @@ impl BgFetcher {
                 }
 
                 let mmu = (*self.mmu).borrow();
-                self.high_data = mmu.read_byte(self.tile_data_addr + 1);
+                self.high_data = mmu.gpu_vram[(self.tile_data_addr + 1 - 0x8000) as usize];
             }
 
             8..=u8::MAX => {

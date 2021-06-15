@@ -444,8 +444,8 @@ impl Ppu {
 
     fn get_adjusted_tile_index(mmu: &Ref<Mmu>, addr: u16, signed_tile_index: bool) -> u16 {
         if signed_tile_index {
-            let tile = mmu.read_byte(addr) as i8 as i16;
-            if tile >= 0{
+            let tile = mmu.gpu_vram[(addr - 0x8000) as usize] as i8 as i16;
+            if tile >= 0 {
                 tile as u16 + 256
             }
             else {
@@ -453,7 +453,7 @@ impl Ppu {
             }
         }
         else {
-            mmu.read_byte(addr) as u16
+            mmu.gpu_vram[(addr - 0x8000) as usize] as u16
         }
     }
 
