@@ -65,7 +65,7 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
     - [x] reg_read
     - [ ] sources
 - [ ] ppu
-    - [ ] hblank_ly_scx_timing-GS
+    - [x] hblank_ly_scx_timing-GS
     - [x] intr_1_2_timing-GS
     - [x] intr_2_0_timing
     - [x] intr_2_mode0_timing
