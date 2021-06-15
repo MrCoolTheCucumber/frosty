@@ -12,6 +12,7 @@ Frosty is a GameBoy emulator written in rust.
 - Cycle accurate Cpu
 - Pretty decent (but not fully perfect) cycle accurate ppu with fifo implementation. 
 - Basic audio support (it could be better but its fine for now!)
+- Open source copywrite free bootrom thanks to [Hacktix](https://github.com/Hacktix/Bootix)!
 
 ## Controls
 
