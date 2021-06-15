@@ -7,6 +7,7 @@
 - https://daid.github.io/GBEmulatorShootout/
 
 - IE top 3 bits are writable, IF top 3 bits always 1
+- https://discord.com/channels/465585922579103744/465586075830845475/854251537958305802
 
 https://github.com/Gekkio/mooneye-gb/tree/master/tests/acceptance
 https://gekkio.fi/files/mooneye-gb/latest/tests/acceptance/
@@ -16,21 +17,20 @@ https://github.com/Powerlated/TurtleTests
 ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycles before the interrupt takes place?
 
 # PPU
-- https://github.com/Hacktix/scribbltests
-
 - https://gbdev.io/pandocs/#pixel-fifo
 - https://hacktixme.ga/GBEDG/ppu/#:~:text=The%20PPU%20(which%20stands%20for,beats%20the%20CPU%20by%20far
-- https://github.com/Gekkio/mooneye-gb/tree/2d52008228557f9e713545e702d5b7aa233d09bb/tests/acceptance/ppu
-- https://gbdev.io/pandocs/#int-48-stat-interrupt RISING EDGE, need to store prev val?
 - https://www.reddit.com/r/EmuDev/comments/aihkvs/gb_some_interupt_questions/
 
 # PPU Advanced
-- https://github.com/Powerlated/TurtleTests ?
 - https://github.com/mattcurrie/mealybug-tearoom-tests
 - https://discord.com/channels/465585922579103744/465586075830845475/849370511338635334
 - STAT IRQs and Blocking
 - https://github.com/mattcurrie/cgb-acid-hell
 - https://www.reddit.com/r/EmuDev/comments/8uahbc/dmg_bgb_lcd_timings_and_cnt/
+- https://www.reddit.com/r/EmuDev/comments/59pawp/gb_mode3_sprite_timing/
+- Run hblank_ly_scx_timing-GS.s in bgb and step through and see what the diff is? why isn't 
+    setup and wait running??
+- https://discord.com/channels/465585922579103744/465586075830845475/854344221086449684 mid fetch sc shift (undo the fix I did)
 
 
 # Sound

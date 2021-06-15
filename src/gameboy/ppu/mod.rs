@@ -209,6 +209,7 @@ impl Ppu {
                 self.mode = PpuMode::HBlank;
                 self.frame_buffer = [220; 160 * 144];
                 self.reset = true;
+                mmu.io[0x44] = 0; // set ly to 0
                 mmu.io[0x41] = (mmu.io[0x41] & 0b11111100) | 0b0000_0010;
                 return;
             }  
@@ -229,6 +230,7 @@ impl Ppu {
             // So the mode in the stat flag should be zero after reset 
             // even though the ppu is actually in mode 2? 🤔
             mmu.io[0x41] = mmu.io[0x41] & 0b11111100;
+            mmu.io[0x44] = 0;
         }
 
         self.mode_clock_cycles += 1;
@@ -256,7 +258,6 @@ impl Ppu {
 
                     if current_scan_line == 144 {
                         self.mode = PpuMode::VBlank;
-                        self.check_ly_eq_lyc();
 
                         // notify safe draw
                         self.draw_flag = true;
@@ -272,6 +273,7 @@ impl Ppu {
                 if self.mode_clock_cycles == Self::STAT_CHANGE_OFFSET {
                     (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::VBlank);
                     self.set_mode_lcdc(PpuMode::VBlank);
+                    self.check_ly_eq_lyc();
                     self.update_stat_irq_conditions(String::from("VBlank"));
                 }
 

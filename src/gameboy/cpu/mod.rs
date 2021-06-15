@@ -83,7 +83,7 @@ impl Cpu {
             l: 0x00,
 
             pc: 0x0,
-            sp: 0xFFFE,
+            sp: 0x0,
 
             operand8: 0,
             operand16: 0,
@@ -532,16 +532,13 @@ impl Cpu {
                     instr_human_readable = instr_human_readable.replace("u16", format!("{:#06X}", op16).as_ref());
                 }
 
-                let start = SystemTime::now();
-                let since_the_epoch = start
-                    .duration_since(UNIX_EPOCH)
-                    .expect("Time went backwards");
-                    
-                let s = format!("{:?}## PC:{:#06X} OP:{:#04X} {}", since_the_epoch, self.pc - 1, opcode, instr_human_readable);
+                
+                let s = format!("PC:{:#06X} OP:{:#04X} {}", self.pc - 1, opcode, instr_human_readable);
                 // println!("{}", s);
+                let ly = self.mmu.borrow_mut().io[0x44];
                 if self.log.is_some() {
                     self.log.as_ref().unwrap().write(format!("{} \n", s).as_ref()).unwrap();
-                    self.log.as_ref().unwrap().write(format!("{:?} \n", self).as_ref()).unwrap();
+                    self.log.as_ref().unwrap().write(format!("LY: {:#04X}, {:?} \n", ly, self).as_ref()).unwrap();
                     self.log.as_ref().unwrap().write("\n".as_ref()).unwrap();
                 }
             }
