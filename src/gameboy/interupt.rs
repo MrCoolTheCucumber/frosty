@@ -148,7 +148,7 @@ impl Interupt {
         let step = Box::new(|cpu: &mut Cpu| { cpu.push_pc_to_stack(); });
         steps.push_back(InstructionStep::Standard(step));
 
-        // Push PC to stack
+        // Set new PC
         let step = Box::new(move |cpu: &mut Cpu| { cpu.set_pc(addr); });
         steps.push_back(InstructionStep::Standard(step));
 
