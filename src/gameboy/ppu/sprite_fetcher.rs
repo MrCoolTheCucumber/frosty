@@ -105,8 +105,6 @@ impl SpriteFetcher {
                     else {
                         fifo_buffer.push(px_data);
                     }
-
-                    // sprite_fifo.push_back(px_data);
                 }     
                 
                 for px in fifo_buffer {
