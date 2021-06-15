@@ -35,7 +35,7 @@ impl fmt::Debug for Interupt {
 impl Interupt {
     pub fn new() -> Self {
         Self {
-            master: 1,
+            master: 0,
             enable: 0,
             flags: 0,
 
@@ -116,7 +116,7 @@ impl Interupt {
 
             let interrupt_instr = Self::create_interupt_instruction(interrupt_addr);
             cpu.set_interrupt_instruction(interrupt_instr);
-            cpu.halted = false;
+            cpu.halted = false; // TODO un-halting here should take an extra 4t cycles (see TCAGBD 4.9)
         }
     }
 
