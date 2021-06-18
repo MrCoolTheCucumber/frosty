@@ -433,6 +433,10 @@ impl Mmu {
                             if val >> 7 == 0 {
                                 // reset ly to 0
                                 self.io[0x44] = 0;
+
+                                // unlock oam/vram
+                                self.lock_oam = false;
+                                self.lock_vram = false;
                             }
                         }
 
