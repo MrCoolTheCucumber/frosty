@@ -27,12 +27,13 @@ pub struct Mmu {
 
     dma_transfer_index: u16,
     dma_transfer_base_addr: u16,
-
     dma_queue_counter: u8,
     dma_queue_val: u16,
-
     dma_active: bool,
     dma_active_clock: u8,
+
+    pub lock_vram: bool,
+    pub lock_oam: bool,
 
     stat_irq_state: bool,
 
@@ -68,12 +69,13 @@ impl Mmu {
 
             dma_transfer_base_addr: 0,
             dma_transfer_index: 0,
-
             dma_queue_counter: 0,
             dma_queue_val: 0,
-
             dma_active: false,
             dma_active_clock: 0,
+
+            lock_oam: false,
+            lock_vram: false,
 
             stat_irq_state: false,
 
@@ -106,25 +108,21 @@ impl Mmu {
 
         // set up zero page mem
         mmu.write_byte(0xFF02, 0x7E);
-        mmu.write_byte(0xFF10, 0x80);
-        mmu.write_byte(0xFF11, 0xBF);
-        mmu.write_byte(0xFF12, 0xF3);
-        mmu.write_byte(0xFF14, 0xBF);
-        mmu.write_byte(0xFF16, 0x3F);
-        mmu.write_byte(0xFF19, 0xBF);
-        mmu.write_byte(0xFF1A, 0x7A);
-        mmu.write_byte(0xFF1B, 0xFF);
-        mmu.write_byte(0xFF1C, 0x9F);
-        mmu.write_byte(0xFF1E, 0xBF);
-        mmu.write_byte(0xFF20, 0xFF);
-        mmu.write_byte(0xFF23, 0xBF);
-        mmu.write_byte(0xFF24, 0x77);
-        mmu.write_byte(0xFF25, 0xF3);
-        mmu.write_byte(0xFF26, 0xF1);
-        mmu.write_byte(0xFF40, 0x91);
-        mmu.write_byte(0xFF47, 0xFC);
-        mmu.write_byte(0xFF48, 0xFF);
-        mmu.write_byte(0xFF49, 0xFF);
+        // mmu.write_byte(0xFF10, 0x80);
+        // mmu.write_byte(0xFF11, 0xBF);
+        // mmu.write_byte(0xFF12, 0xF3);
+        // mmu.write_byte(0xFF14, 0xBF);
+        // mmu.write_byte(0xFF16, 0x3F);
+        // mmu.write_byte(0xFF19, 0xBF);
+        // mmu.write_byte(0xFF1A, 0x7A);
+        // mmu.write_byte(0xFF1B, 0xFF);
+        // mmu.write_byte(0xFF1C, 0x9F);
+        // mmu.write_byte(0xFF1E, 0xBF);
+        // mmu.write_byte(0xFF20, 0xFF);
+        // mmu.write_byte(0xFF23, 0xBF);
+        // mmu.write_byte(0xFF24, 0x77);
+        // mmu.write_byte(0xFF25, 0xF3);
+        // mmu.write_byte(0xFF26, 0xF1);
 
         mmu
     }
@@ -168,10 +166,11 @@ impl Mmu {
 
             // vram
             0x8000 | 0x9000 => {
-                match self.current_ppu_mode() {
-                    PpuMode::VRAM => { return 0xFF }
-                    _ => self.gpu_vram[(addr - 0x8000) as usize]
+                if self.lock_vram {
+                    return 0xFF;
                 }
+
+                self.gpu_vram[(addr - 0x8000) as usize]
             }
             
             // cart ram
@@ -200,9 +199,8 @@ impl Mmu {
 
                     0x0E00 => {
                         if addr < 0xFEA0 {
-                            match self.current_ppu_mode() {
-                                PpuMode::OAM | PpuMode::VRAM => { return 0xFF }
-                                _ => {}
+                            if self.lock_oam || self.lock_vram {
+                                return 0xFF;
                             }
 
                             if self.dma_active { return 0xFF }
@@ -371,16 +369,7 @@ impl Mmu {
 
             // vram
             0x8000 | 0x9000 => {
-                match self.current_ppu_mode() {
-                    PpuMode::VRAM => { 
-                        // temp bios check for the hacktix boot img
-                        // otherwise the nintendo logo is corrupted
-                        if !self.bios_enabled {
-                            return;
-                        } 
-                    }
-                    _ => {}
-                }
+                if self.lock_vram { return }
 
                 self.gpu_vram[(addr - 0x8000) as usize] = val;
             }
@@ -408,10 +397,7 @@ impl Mmu {
                     0x0E00 => {
                         if self.dma_active { return; }
 
-                        match self.current_ppu_mode() {
-                            PpuMode::OAM | PpuMode::VRAM => { return; }
-                            _ => {}
-                        }
+                        if self.lock_vram || self.lock_oam { return; }
 
                         if addr < 0xFEA0 {
                             self.sprite_table[(addr - 0xFE00) as usize] = val;
@@ -661,11 +647,6 @@ impl Mmu {
                 self.dma_active_clock = 0;
             }
         }
-    }
-
-    pub fn current_ppu_mode(&self) -> PpuMode {
-        let stat = self.io[0x41];
-        PpuMode::from_u8(stat & 0b0000_0011)
     }
 
     pub fn update_stat_irq_conditions(&mut self, src: String) {

@@ -1,4 +1,4 @@
-use std::{cell::{Ref, RefCell}, cmp::Ordering, collections::VecDeque, rc::Rc};
+use std::{borrow::Borrow, cell::{Ref, RefCell}, cmp::Ordering, collections::VecDeque, rc::Rc};
 use self::{bg_fetcher::{FetchMode, BgFetcher}, sprite_fetcher::SpriteFetcher};
 
 use super::{interupt::InterruptFlag, mmu::Mmu};
@@ -38,7 +38,7 @@ pub struct Ppu {
 
     ly_153_early: bool,
 
-    just_powered_on: bool,
+    power_on_line_0: bool
 }
 
 pub struct Sprite {
@@ -150,7 +150,7 @@ impl Ppu {
 
             ly_153_early: false,
 
-            just_powered_on: true,
+            power_on_line_0: true,
         }
     }
 
@@ -210,20 +210,29 @@ impl Ppu {
                 self.frame_buffer = [220; 160 * 144];
                 self.reset = true;
                 mmu.io[0x44] = 0; // set ly to 0
-                mmu.io[0x41] = (mmu.io[0x41] & 0b11111100) | 0b0000_0010;
+                // bits 0 - 2 return 0 when the lcd is off
+                mmu.io[0x41] = mmu.io[0x41] & 0b11111000;
                 return;
-            }  
+            }
+
+            if mmu.io[0x40] & LcdControlFlag::LCDDisplayEnable as u8 == 0 && self.reset {
+                return;
+            }
         }
 
         if self.reset {
             self.reset = false;
-            self.just_powered_on = true;
+            self.power_on_line_0 = true;
+            
+            // apparently ppu is late by 2 t cycles
+            // but if we set it to 6, we pass expected ly, lyc=0, lyc=1
+            // but not oam🤔
             self.line_clock_cycles = 6;
             self.mode_clock_cycles = 6;
             self.frame_clock_cycles = 6;
             self.mode = PpuMode::OAM;
 
-            self.check_ly_eq_lyc();
+            self.check_ly_eq_lyc(); // do we update ly=lyc in stat here?
 
             let mut mmu = (*self.mmu).borrow_mut();
 
@@ -237,6 +246,11 @@ impl Ppu {
         self.line_clock_cycles += 1;
         self.frame_clock_cycles += 1;
 
+        if self.power_on_line_0 {
+            self.power_on_line_0 = !self.power_on_line_0_tick();
+            return;
+        }
+
         // https://robertovaccari.com/gameboy/LCD-refresh-diagram.png
         match self.mode {
             // 0
@@ -244,10 +258,14 @@ impl Ppu {
                 if self.mode_clock_cycles == Self::STAT_CHANGE_OFFSET {
                     self.set_mode_lcdc(PpuMode::HBlank);
                     self.update_stat_irq_conditions(String::from("HBlank"));
+
+                    let mut mmu = self.mmu.borrow_mut();
+                    mmu.lock_oam = false;
+                    mmu.lock_vram = false;
                 }
 
                 if self.line_clock_cycles == 456 {
-                    self.just_powered_on = false;
+                    self.power_on_line_0 = false;
                     self.mode_clock_cycles = 0;
                     self.line_clock_cycles = 0;
                     
@@ -264,6 +282,7 @@ impl Ppu {
                     }
                     else {
                         self.mode = PpuMode::OAM;
+                        self.mmu.borrow_mut().lock_oam = true;
                     }
                 }
             }
@@ -307,6 +326,7 @@ impl Ppu {
                         self.wy_ly_equality_latch = false;
                         
                         self.mode = PpuMode::OAM;
+                        self.mmu.borrow_mut().lock_oam = true;
                     }
                 }
             },
@@ -326,7 +346,7 @@ impl Ppu {
                 }
 
                 if self.mode_clock_cycles == Self::STAT_CHANGE_OFFSET {
-                    if !self.just_powered_on {
+                    if !self.power_on_line_0 {
                         self.set_mode_lcdc(PpuMode::OAM);
                         self.update_stat_irq_conditions(String::from("OAM"));
                     }
@@ -335,9 +355,6 @@ impl Ppu {
                 }
 
                 if self.mode_clock_cycles == 80 {
-                    // do we need cycle accurate oam fetching?
-                    // prob not as oam technically isn't writable during
-                    // this time?
                     self.fifo_sprite_buffer.clear();
                     self.fifo_sprite_buffer_peek = None;
 
@@ -418,6 +435,7 @@ impl Ppu {
 
                     self.mode_clock_cycles = 0;
                     self.mode = PpuMode::VRAM;
+                    self.mmu.borrow_mut().lock_vram = true;
                 }
             }
 
@@ -442,33 +460,42 @@ impl Ppu {
         }
     }
 
-    fn get_adjusted_tile_index(mmu: &Ref<Mmu>, addr: u16, signed_tile_index: bool) -> u16 {
-        if signed_tile_index {
-            let tile = mmu.gpu_vram[(addr - 0x8000) as usize] as i8 as i16;
-            if tile >= 0 {
-                tile as u16 + 256
+    fn power_on_line_0_tick(&mut self) -> bool {
+        match self.line_clock_cycles {
+            83 => {
+                self.set_mode_lcdc(PpuMode::VRAM);
+                self.update_stat_irq_conditions(String::from("VRAM"));
+                self.mmu.borrow_mut().lock_vram = true;
             }
-            else {
-                256 - (tile.abs() as u16)
+
+            257 => {
+                self.mode = PpuMode::HBlank;
+                self.set_mode_lcdc(PpuMode::HBlank);
+                self.update_stat_irq_conditions(String::from("HBlank"));
+
+                let mut mmu = self.mmu.borrow_mut();
+                mmu.lock_oam = false;
+                mmu.lock_vram = false;
             }
-        }
-        else {
-            mmu.gpu_vram[(addr - 0x8000) as usize] as u16
-        }
-    }
 
-    fn get_bg_map_start_addr(ldlc_flags: u8) -> u16 {
-        match (ldlc_flags & LcdControlFlag::BGTileMapAddress as u8) != 0 {
-            true => 0x9C00,
-            false => 0x9800
-        }
-    }
 
-    fn get_window_map_start_addr(ldlc_flags: u8) -> u16 {
-        match (ldlc_flags & LcdControlFlag::WindowTileMapAddress as u8) != 0 {
-            true => 0x9C00,
-            false => 0x9800
+            456 => {
+                self.power_on_line_0 = false;
+                self.mode_clock_cycles = 0;
+                self.line_clock_cycles = 0;
+
+                self.inc_scan_line();
+
+                self.mode = PpuMode::OAM;
+                self.mmu.borrow_mut().lock_oam = true;
+
+                return true;
+            }
+
+            _ => { } // NOP
         }
+
+        false
     }
 
     // This will probably return a bool to say we've drawn the whole line,

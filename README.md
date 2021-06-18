@@ -87,7 +87,7 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
     - [ ] intr_2_mode0_timing_sprites
     - [x] intr_2_mode3_timing
     - [x] intr_2_oam_ok_timing
-    - [ ] lcdon_timing-GS
+    - [x] lcdon_timing-GS
     - [ ] lcdon_write_timing-GS
     - [x] stat_irq_blocking
     - [ ] stat_lyc_onoff
@@ -111,7 +111,7 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
     - [x] tma_write_reloading
 - [x] add_sp_e_timing
 - [x] boot_div-dmgABCmgb
-- [ ] boot_hwio-dmgABCmgb (might require stat ir blocking?)
+- [ ] boot_hwio-dmgABCmgb (For some reason STAT is wrong 🤔)
 - [x] boot_regs-dmgABC
 - [x] call_cc_timing
 - [x] call_cc_timing2

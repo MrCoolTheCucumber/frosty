@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use std::{cell::{Ref, RefCell}, collections::VecDeque, rc::Rc};
 
 use crate::gameboy::{mmu::Mmu, ppu::{LcdControlFlag, Ppu}};
 
@@ -53,6 +53,35 @@ impl BgFetcher {
         self.low_data = 0;
         self.high_data = 0;
     }
+
+    fn get_adjusted_tile_index(mmu: &Ref<Mmu>, addr: u16, signed_tile_index: bool) -> u16 {
+        if signed_tile_index {
+            let tile = mmu.gpu_vram[(addr - 0x8000) as usize] as i8 as i16;
+            if tile >= 0 {
+                tile as u16 + 256
+            }
+            else {
+                256 - (tile.abs() as u16)
+            }
+        }
+        else {
+            mmu.gpu_vram[(addr - 0x8000) as usize] as u16
+        }
+    }
+
+    fn get_bg_map_start_addr(ldlc_flags: u8) -> u16 {
+        match (ldlc_flags & LcdControlFlag::BGTileMapAddress as u8) != 0 {
+            true => 0x9C00,
+            false => 0x9800
+        }
+    }
+
+    fn get_window_map_start_addr(ldlc_flags: u8) -> u16 {
+        match (ldlc_flags & LcdControlFlag::WindowTileMapAddress as u8) != 0 {
+            true => 0x9C00,
+            false => 0x9800
+        }
+    }
    
     pub fn tick(&mut self, pixel_fifo: &mut VecDeque<u8>, window_line_counter: u8) {
         self.cycle += 1;
@@ -76,20 +105,20 @@ impl BgFetcher {
                         let tile_y = scan_line.wrapping_add(scroll_y) / 8;
                         let base_tile_map_offset = tile_y as u16 * 32;
 
-                        Ppu::get_bg_map_start_addr(ldlc_flags) + base_tile_map_offset +
+                        Self::get_bg_map_start_addr(ldlc_flags) + base_tile_map_offset +
                             (scroll_x.wrapping_add(self.tile_counter as u8 * 8) / 8) as u16
                     }
 
                     FetchMode::Window => {
                         let base_tile_map_offset = (window_line_counter as u16 / 8) * 32;
                         
-                        Ppu::get_window_map_start_addr(ldlc_flags) + 
+                        Self::get_window_map_start_addr(ldlc_flags) + 
                             self.tile_counter + base_tile_map_offset
                     }
                 };
                     
 
-                self.tile_num = Ppu::get_adjusted_tile_index(
+                self.tile_num = Self::get_adjusted_tile_index(
                     &mmu, 
                     map_addr,
                     signed_tile_addressing
