@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, cell::{Ref, RefCell}, cmp::Ordering, collections::VecDeque, rc::Rc};
+use std::{cell::{RefCell}, cmp::Ordering, collections::VecDeque, rc::Rc};
 use self::{bg_fetcher::{FetchMode, BgFetcher}, sprite_fetcher::SpriteFetcher};
 
 use super::{interupt::InterruptFlag, mmu::Mmu};
@@ -179,10 +179,6 @@ impl Ppu {
         (*self.mmu).borrow().io[0x45]
     }
 
-    fn lyc_check_enabled(&self) -> bool {
-        (*self.mmu).borrow().io[0x41] & 0b0100_0000 != 0
-    }
-
     fn check_ly_eq_lyc(&mut self) {
         if self.get_scan_line() == self.get_lyc() {
             let mut mmu = (self.mmu).borrow_mut();
@@ -224,9 +220,9 @@ impl Ppu {
             self.reset = false;
             self.power_on_line_0 = true;
             
-            // apparently ppu is late by 2 t cycles
-            // but if we set it to 6, we pass expected ly, lyc=0, lyc=1
-            // but not oam🤔
+            // TODO:
+            // Should this be 7? Then goes to 8 next line so we start on
+            // cycle 8 which I think is correct.
             self.line_clock_cycles = 6;
             self.mode_clock_cycles = 6;
             self.frame_clock_cycles = 6;
