@@ -1,6 +1,9 @@
 .vscode/
 /target
+
 **/*.gb
+!tests/**/*.gb
+
 **/*.sav
 
 log.txt
