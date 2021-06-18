@@ -88,7 +88,7 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
     - [x] intr_2_mode3_timing
     - [x] intr_2_oam_ok_timing
     - [x] lcdon_timing-GS
-    - [ ] lcdon_write_timing-GS
+    - [ ] lcdon_write_timing-GS (oam/vram has seperate locking for reads and writes?)
     - [x] stat_irq_blocking
     - [ ] stat_lyc_onoff
     - [ ] vblank_stat_intr-GS
@@ -135,7 +135,7 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - [x] oam_dma_timing
 - [x] pop_timing
 - [x] push_timing
-- [ ] rapid_di_ei
+- [x] rapid_di_ei
 - [x] ret_cc_timing
 - [x] ret_timing
 - [x] reti_intr_timing
