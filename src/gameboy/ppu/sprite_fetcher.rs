@@ -96,13 +96,11 @@ impl SpriteFetcher {
                         sprite_palette: sprite.sprite_palette 
                     };
 
-
                     if (x as usize) < fifo_len {
                         if fifo_buffer[x as usize].sprite_color_bit == 0 {
                             fifo_buffer[x as usize] = px_data;
                         }
-                    }
-                    else {
+                    } else {
                         fifo_buffer.push(px_data);
                     }
                 }     
