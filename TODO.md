@@ -31,6 +31,7 @@ ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycle
 - Run hblank_ly_scx_timing-GS.s in bgb and step through and see what the diff is? why isn't 
     setup and wait running??
 - https://discord.com/channels/465585922579103744/465586075830845475/854344221086449684 mid fetch sc shift (undo the fix I did)
+- http://blog.kevtris.org/blogfiles/Nitty%20Gritty%20Gameboy%20VRAM%20Timing.txt
 
 
 # Sound
