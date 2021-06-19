@@ -1,4 +1,4 @@
-# TODO
+# NOTES
 - Improve disassembler code. E.g. replace blank closures with func that inserts a delay instruction step?
 - Implement LCD Control bit 7 behaviour
 - Am I handling interupts in the correct order if more than 1 are valid to fire?
