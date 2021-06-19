@@ -21,8 +21,10 @@ macro_rules! blargg_test {
             d.push(format!("tests/roms/blargg/{}.gb", rom_num));
             let rom_str = d.to_str().unwrap();
 
+            let test = std::env::var("GITHUB_WORKSPACE").unwrap();
+            println!("{}", test);
+
             {
-                println!("{}", rom_str);
                 let mut s = GameBoy::new(rom_str, None);
 
                 let cycles_to_run = CYCLES_PER_SCREEN_DRAW * 60 * $secs;
