@@ -17,7 +17,7 @@ macro_rules! blargg_test {
                 Ok(_) => {
                     let github_workspace = std::env::var("GITHUB_WORKSPACE").unwrap();
 
-                    let paths = fs::read_dir(&github_workspace).unwrap();
+                    let paths = fs::read_dir(format!("{}\\tests\\expeced\\blargg", &github_workspace)).unwrap();
 
                     for path in paths {
                         println!("Name: {}", path.unwrap().path().display())
@@ -35,6 +35,8 @@ macro_rules! blargg_test {
             
             d.push(format!("tests\\roms\\blargg\\{}.gb", rom_num));
             let rom_str = d.to_str().unwrap();
+
+            println!("{}", rom_str);
 
             {
                 let mut s = GameBoy::new(rom_str, None);
