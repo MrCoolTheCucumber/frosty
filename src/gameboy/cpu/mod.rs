@@ -64,11 +64,7 @@ impl fmt::Debug for Cpu {
 
 impl Cpu {
     pub fn new(mmu: Rc<RefCell<Mmu>>) -> Self {
-        let log = false;
-        let mut file: Option<File> = None;
-        if log {
-            file = Some(File::create("I:\\Dev\\gameboy-rs\\log.txt").unwrap());
-        }
+        let file: Option<File> = None;
 
         Self {
             mmu,
@@ -517,6 +513,10 @@ impl Cpu {
             }
 
             if self.start_log {
+                if self.log.is_none() {
+                    self.log = Some(File::create("I:\\Dev\\gameboy-rs\\log.txt").unwrap());
+                }
+
                 let mut instr_human_readable = instruction.human_readable.clone();
 
                 if instr_human_readable.contains("u8") {
