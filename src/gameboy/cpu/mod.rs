@@ -64,7 +64,7 @@ impl fmt::Debug for Cpu {
 
 impl Cpu {
     pub fn new(mmu: Rc<RefCell<Mmu>>) -> Self {
-        let log = true;
+        let log = false;
         let mut file: Option<File> = None;
         if log {
             file = Some(File::create("I:\\Dev\\gameboy-rs\\log.txt").unwrap());
