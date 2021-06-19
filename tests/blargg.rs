@@ -1,4 +1,4 @@
-use std::{fs::File, io::{Read}, path::{PathBuf}};
+use std::{fs::{self, File}, io::{Read}, path::{PathBuf}};
 
 use gameboy_rs::gameboy::GameBoy;
 
@@ -20,21 +20,31 @@ macro_rules! blargg_test {
             d.push(format!("tests/roms/blargg/{}.gb", rom_num));
             let rom_str = d.to_str().unwrap();
 
-            let mut s = GameBoy::new(rom_str, None);
+            {
+                let mut s = GameBoy::new(rom_str, None);
 
-            let cycles_to_run = CYCLES_PER_SCREEN_DRAW * 60 * $secs;
-            for _ in 0..cycles_to_run {
-                s.tick();
+                let cycles_to_run = CYCLES_PER_SCREEN_DRAW * 60 * $secs;
+                for _ in 0..cycles_to_run {
+                    s.tick();
+                }
+
+                let fb = s.get_frame_buffer();
+
+                let mut exp = File::open(format!("./tests/expected/blargg/{}.bin", rom_num)).unwrap();
+                let mut buf = Vec::new();
+                exp.read_to_end(&mut buf).unwrap();
+
+                for i in 0..fb.len() {
+                    assert_eq!(fb[i], buf[i]);
+                }
             }
 
-            let fb = s.get_frame_buffer();
-
-            let mut exp = File::open(format!("./tests/expected/blargg/{}.bin", rom_num)).unwrap();
-            let mut buf = Vec::new();
-            exp.read_to_end(&mut buf).unwrap();
-
-            for i in 0..fb.len() {
-                assert_eq!(fb[i], buf[i]);
+            // gb should be dropped now, which will create a .sav file
+            // delete the .sav file
+            // for some reason the save file as two periods "." in it
+            match fs::remove_file(format!("tests/roms/blargg/{}..sav", rom_num)) {
+                Ok(_) => { },
+                Err(_) => { } // don't really care if it fails
             }
         }
     )*
