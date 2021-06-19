@@ -21,6 +21,7 @@ macro_rules! blargg_test {
             let rom_str = d.to_str().unwrap();
 
             {
+                println!("{}", rom_str);
                 let mut s = GameBoy::new(rom_str, None);
 
                 let cycles_to_run = CYCLES_PER_SCREEN_DRAW * 60 * $secs;
