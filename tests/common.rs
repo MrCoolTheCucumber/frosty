@@ -1,5 +1,4 @@
 use image::{ImageBuffer, RgbImage};
-use sdl2::sys::Window;
 
 pub const WIDTH: u32 = 160;
 pub const HEIGHT: u32 = 144;
