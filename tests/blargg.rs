@@ -17,7 +17,8 @@ macro_rules! blargg_test {
                 Ok(_) => {
                     let github_workspace = std::env::var("GITHUB_WORKSPACE").unwrap();
 
-                    let paths = fs::read_dir(format!("{}\\tests\\expeced\\blargg", &github_workspace)).unwrap();
+                    println!("construct test list");
+                    let paths = fs::read_dir(format!("{}\\tests", &github_workspace)).unwrap();
 
                     for path in paths {
                         println!("Name: {}", path.unwrap().path().display())
@@ -48,6 +49,7 @@ macro_rules! blargg_test {
 
                 let fb = s.get_frame_buffer();
 
+                println!("construct bin file path");
                 let mut exp = File::open(format!(".\\tests\\expected\\blargg\\{}.bin", rom_num)).unwrap();
                 let mut buf = Vec::new();
                 exp.read_to_end(&mut buf).unwrap();
