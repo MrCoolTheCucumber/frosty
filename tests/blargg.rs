@@ -13,7 +13,8 @@ macro_rules! blargg_test {
     $(
         #[test]
         fn $name() {
-            let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            // let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            let mut d = PathBuf::from("/github/workspace/");
             
             let rom_num = &stringify!($name)[6..];
             
