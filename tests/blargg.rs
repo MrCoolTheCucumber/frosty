@@ -13,16 +13,28 @@ macro_rules! blargg_test {
     $(
         #[test]
         fn $name() {
-            // let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-            let mut d = PathBuf::from("/github/workspace/");
+            let mut d: PathBuf = match std::env::var("CI") {
+                Ok(_) => {
+                    let github_workspace = std::env::var("GITHUB_WORKSPACE").unwrap();
+
+                    let paths = fs::read_dir(&github_workspace).unwrap();
+
+                    for path in paths {
+                        println!("Name: {}", path.unwrap().path().display())
+                    }
+
+                    PathBuf::from(&github_workspace)
+                }
+
+                Err(_) => {
+                    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                }
+            };
             
             let rom_num = &stringify!($name)[6..];
             
-            d.push(format!("tests/roms/blargg/{}.gb", rom_num));
+            d.push(format!("tests\\roms\\blargg\\{}.gb", rom_num));
             let rom_str = d.to_str().unwrap();
-
-            let test = std::env::var("GITHUB_WORKSPACE").unwrap();
-            println!("{}", test);
 
             {
                 let mut s = GameBoy::new(rom_str, None);
@@ -34,7 +46,7 @@ macro_rules! blargg_test {
 
                 let fb = s.get_frame_buffer();
 
-                let mut exp = File::open(format!("./tests/expected/blargg/{}.bin", rom_num)).unwrap();
+                let mut exp = File::open(format!(".\\tests\\expected\\blargg\\{}.bin", rom_num)).unwrap();
                 let mut buf = Vec::new();
                 exp.read_to_end(&mut buf).unwrap();
 
@@ -46,7 +58,7 @@ macro_rules! blargg_test {
             // gb should be dropped now, which will create a .sav file
             // delete the .sav file
             // for some reason the save file as two periods "." in it
-            match fs::remove_file(format!("tests/roms/blargg/{}..sav", rom_num)) {
+            match fs::remove_file(format!("tests\\roms\\blargg\\{}..sav", rom_num)) {
                 Ok(_) => { },
                 Err(_) => { } // don't really care if it fails
             }
