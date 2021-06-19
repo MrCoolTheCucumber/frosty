@@ -22,7 +22,6 @@ macro_rules! mooneye_test {
             d.push(&path);
 
             let rom_str = d.to_str().unwrap();
-            println!("{}", rom_str);
 
             {
                 let mut s = GameBoy::new(rom_str, None);
@@ -36,9 +35,8 @@ macro_rules! mooneye_test {
 
                 // create file in expected
                 let bin_file_path = format!("./tests/expected/mooneye/acceptance/{}.png", &path);
-                compare_image(fb, bin_file_path);
-
-                println!(".. {}", path);
+                let comparison = compare_image(fb, bin_file_path);
+                assert!(comparison);
             }
         }
     )*

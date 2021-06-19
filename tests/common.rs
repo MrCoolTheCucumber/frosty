@@ -1,4 +1,5 @@
 use image::{ImageBuffer, RgbImage};
+use sdl2::sys::Window;
 
 pub const WIDTH: u32 = 160;
 pub const HEIGHT: u32 = 144;
@@ -24,9 +25,8 @@ pub fn compare_image(fb: &[u8], p: String) -> bool {
     let img = image::io::Reader::open(p).unwrap().decode().unwrap();
     let img = img.as_rgb8().unwrap();
 
-    let index: usize = 0;
     for px in img.enumerate_pixels() {
-        if fb[index] != px.2[0] {
+        if fb[((px.1 * WIDTH) + px.0) as usize] != px.2[0] {
             return false;
         }
     }
