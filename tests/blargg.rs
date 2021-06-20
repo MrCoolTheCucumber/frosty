@@ -1,7 +1,7 @@
 use std::{fs::{self}, path::{PathBuf}};
 
 use gameboy_rs::gameboy::GameBoy;
-use common::{CYCLES_PER_SCREEN_DRAW, compare_image};
+use common::{CYCLES_PER_SCREEN_DRAW, compare_image_rgb8};
 extern crate gameboy_rs;
 
 mod common;
@@ -47,7 +47,7 @@ macro_rules! blargg_test {
 
                 pb.push(format!("expected\\blargg\\{}.png", rom_num));
 
-                let comparison = compare_image(fb, pb.to_str().unwrap().to_owned());
+                let comparison = compare_image_rgb8(fb, pb.to_str().unwrap().to_owned());
                 assert!(comparison);
             }
 

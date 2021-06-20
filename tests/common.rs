@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use image::{ImageBuffer, RgbImage};
+use image::{ImageBuffer, RgbImage, io::Reader};
 
 pub const WIDTH: u32 = 160;
 pub const HEIGHT: u32 = 144;
@@ -22,7 +22,7 @@ pub fn create_image(fb: &[u8], p: String) {
     img.save(p).unwrap();
 }
 
-pub fn compare_image(fb: &[u8], p: String) -> bool {
+pub fn compare_image_rgb8(fb: &[u8], p: String) -> bool {
     let img = image::io::Reader::open(p).unwrap().decode().unwrap();
     let img = img.as_rgb8().unwrap();
 
@@ -33,6 +33,34 @@ pub fn compare_image(fb: &[u8], p: String) -> bool {
     }
 
     true
+}
+
+pub fn compare_image_luma8(fb: &[u8], p: String) -> bool {
+    let img = image::io::Reader::open(p).unwrap().decode().unwrap();
+    let img = img.as_luma8().unwrap();
+
+    let mut incorrect_px = 0;
+    for px in img.enumerate_pixels() {
+        let fb_px = fb[((px.1 * WIDTH) + px.0) as usize];
+        let img_px = px.2[0];
+        
+        let fb_px = match fb_px {
+            0 => 0,
+            96 => 0x55,
+            192 => 0xAA,
+            255 => 0xFF,
+            _ => unreachable!()
+        };
+
+        if fb_px != img_px {
+            incorrect_px += 1;
+        }
+    }
+
+    let accuracy = (incorrect_px as f32 / fb.len() as f32) * 100.0;
+    println!("Accuracy: {}%", accuracy);
+
+    accuracy >= 70.0
 }
 
 pub fn get_base_dir() -> PathBuf {

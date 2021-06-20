@@ -1,4 +1,4 @@
-use common::{CYCLES_PER_SCREEN_DRAW, compare_image, get_base_dir};
+use common::{CYCLES_PER_SCREEN_DRAW, compare_image_rgb8, get_base_dir};
 use gameboy_rs::gameboy::GameBoy;
 
 mod common;
@@ -24,6 +24,6 @@ fn dmg_acid2() {
     pb.push("expected\\dmg-acid2.png");
     println!("{}", pb.to_str().unwrap());
 
-    let comparison = compare_image(fb, pb.to_str().unwrap().to_owned());
+    let comparison = compare_image_rgb8(fb, pb.to_str().unwrap().to_owned());
     assert!(comparison);
 }

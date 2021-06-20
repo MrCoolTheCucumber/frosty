@@ -1,7 +1,7 @@
 use std::{path::{PathBuf}};
 
 use gameboy_rs::gameboy::GameBoy;
-use common::{compare_image, CYCLES_PER_SCREEN_DRAW};
+use common::{compare_image_rgb8, CYCLES_PER_SCREEN_DRAW};
 
 extern crate gameboy_rs;
 extern crate image;
@@ -35,7 +35,7 @@ macro_rules! mooneye_test {
 
                 // create file in expected
                 let bin_file_path = format!("./tests/expected/mooneye/acceptance/{}.png", &path);
-                let comparison = compare_image(fb, bin_file_path);
+                let comparison = compare_image_rgb8(fb, bin_file_path);
                 assert!(comparison);
             }
         }
