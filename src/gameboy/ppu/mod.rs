@@ -228,14 +228,16 @@ impl Ppu {
             self.frame_clock_cycles = 6;
             self.mode = PpuMode::OAM;
 
+            {
+                let mut mmu = (*self.mmu).borrow_mut();
+
+                // So the mode in the stat flag should be zero after reset 
+                // even though the ppu is actually in mode 2? 🤔
+                mmu.io[0x41] = mmu.io[0x41] & 0b11111100;
+                mmu.io[0x44] = 0;
+            }
+
             self.check_ly_eq_lyc(); // do we update ly=lyc in stat here?
-
-            let mut mmu = (*self.mmu).borrow_mut();
-
-            // So the mode in the stat flag should be zero after reset 
-            // even though the ppu is actually in mode 2? 🤔
-            mmu.io[0x41] = mmu.io[0x41] & 0b11111100;
-            mmu.io[0x44] = 0;
         }
 
         self.mode_clock_cycles += 1;
