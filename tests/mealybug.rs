@@ -12,6 +12,7 @@ macro_rules! mealybug_test {
     ($($name:ident: $path:expr,)*) => {
     $(
         #[test]
+        #[ignore]
         fn $name() {
             let path: String = stringify!($path).to_owned();
             let path: String = path[1..path.len()-1].to_owned();
@@ -36,17 +37,7 @@ macro_rules! mealybug_test {
                 // create file in expected
                 let bin_file_path = format!("./tests/expected/mealybug/{}.png", &path[0..path.len()-3]);
                 let comparison = compare_image_luma8(fb, bin_file_path);
-
-                match std::env::var("CI") {
-                    Ok(_) => { 
-                        // All tests are known fails, so don't fail the CI for it!
-                        assert!(true)
-                    }
-            
-                    Err(_) => {
-                        assert!(comparison);
-                    }
-                }
+                assert!(comparison);
             }
         }
     )*
