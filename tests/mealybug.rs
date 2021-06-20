@@ -54,7 +54,12 @@ macro_rules! mealybug_test {
 }
 
 mealybug_test! {
+
+    /*
+        First line is completely blank when it shouldnt be
+    */
     m2_win_en_toggle: "m2_win_en_toggle.gb", 
+
     m3_bgp_change: "m3_bgp_change.gb", 
     m3_bgp_change_sprites: "m3_bgp_change_sprites.gb", 
     m3_lcdc_bg_en_change: "m3_lcdc_bg_en_change.gb", 
