@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use image::{ImageBuffer, RgbImage};
 
 pub const WIDTH: u32 = 160;
@@ -31,4 +33,17 @@ pub fn compare_image(fb: &[u8], p: String) -> bool {
     }
 
     true
+}
+
+pub fn get_base_dir() -> PathBuf {
+    match std::env::var("CI") {
+        Ok(_) => {
+            let github_workspace = std::env::var("GITHUB_WORKSPACE").unwrap();
+            PathBuf::from(&github_workspace)
+        }
+
+        Err(_) => {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        }
+    }
 }
