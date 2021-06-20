@@ -1,5 +1,7 @@
 # Frosty
 
+[![Build and Test](https://github.com/RubenG123/frosty/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/RubenG123/frosty/actions/workflows/build_and_test.yml)
+
 Frosty is a GameBoy emulator written in rust.
 
 ![image](https://user-images.githubusercontent.com/16002713/119414812-330f3000-bce8-11eb-9eac-b12482dbc3f2.png)
