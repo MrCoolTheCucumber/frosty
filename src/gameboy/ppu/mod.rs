@@ -206,8 +206,7 @@ impl Ppu {
                 self.frame_buffer = [220; 160 * 144];
                 self.reset = true;
                 mmu.io[0x44] = 0; // set ly to 0
-                // bits 0 - 2 return 0 when the lcd is off
-                mmu.io[0x41] = mmu.io[0x41] & 0b11111000;
+                mmu.io[0x41] = mmu.io[0x41] & 0b11111100;
                 return;
             }
 
@@ -237,7 +236,7 @@ impl Ppu {
                 mmu.io[0x44] = 0;
             }
 
-            self.check_ly_eq_lyc(); // do we update ly=lyc in stat here?
+            self.check_ly_eq_lyc();
         }
 
         self.mode_clock_cycles += 1;
@@ -246,6 +245,7 @@ impl Ppu {
 
         if self.power_on_line_0 {
             self.power_on_line_0 = !self.power_on_line_0_tick();
+            self.update_stat_irq_conditions(String::from("power on lyc check"));
             return;
         }
 
@@ -255,7 +255,6 @@ impl Ppu {
             PpuMode::HBlank => {
                 if self.mode_clock_cycles == Self::STAT_CHANGE_OFFSET {
                     self.set_mode_lcdc(PpuMode::HBlank);
-                    self.update_stat_irq_conditions(String::from("HBlank"));
 
                     let mut mmu = self.mmu.borrow_mut();
                     mmu.lock_oam = false;
@@ -291,7 +290,6 @@ impl Ppu {
                     (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::VBlank);
                     self.set_mode_lcdc(PpuMode::VBlank);
                     self.check_ly_eq_lyc();
-                    self.update_stat_irq_conditions(String::from("VBlank"));
                 }
 
                 let scan_line = self.get_scan_line();
@@ -300,7 +298,6 @@ impl Ppu {
                 if scan_line == 153 && self.line_clock_cycles == 4 {
                     self.set_scan_line(0);
                     self.check_ly_eq_lyc();
-                    self.update_stat_irq_conditions(String::from("LY 0"));
                     self.ly_153_early = true;
                 }
 
@@ -311,7 +308,6 @@ impl Ppu {
                     if scan_line < 153 && !self.ly_153_early {
                         self.inc_scan_line();
                         self.check_ly_eq_lyc();
-                        self.update_stat_irq_conditions(String::from("LY"));
                     } else {
                         self.ly_153_early = false;
 
@@ -346,7 +342,6 @@ impl Ppu {
                 if self.mode_clock_cycles == Self::STAT_CHANGE_OFFSET {
                     if !self.power_on_line_0 {
                         self.set_mode_lcdc(PpuMode::OAM);
-                        self.update_stat_irq_conditions(String::from("OAM"));
                     }
 
                     self.check_ly_eq_lyc();
@@ -446,7 +441,6 @@ impl Ppu {
 
                 if self.mode_clock_cycles == Self::STAT_CHANGE_OFFSET {
                     self.set_mode_lcdc(PpuMode::VRAM);
-                    self.update_stat_irq_conditions(String::from("VRAM"));
                 }
 
                 if self.fifo_tick() {
@@ -456,20 +450,20 @@ impl Ppu {
                 }
             }
         }
+
+        self.update_stat_irq_conditions(String::from(""));
     }
 
     fn power_on_line_0_tick(&mut self) -> bool {
         match self.line_clock_cycles {
             83 => {
                 self.set_mode_lcdc(PpuMode::VRAM);
-                self.update_stat_irq_conditions(String::from("VRAM"));
                 self.mmu.borrow_mut().lock_vram = true;
             }
 
             257 => {
                 self.mode = PpuMode::HBlank;
                 self.set_mode_lcdc(PpuMode::HBlank);
-                self.update_stat_irq_conditions(String::from("HBlank"));
 
                 let mut mmu = self.mmu.borrow_mut();
                 mmu.lock_oam = false;

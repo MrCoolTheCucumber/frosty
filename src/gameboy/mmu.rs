@@ -454,10 +454,13 @@ impl Mmu {
                         else if addr == 0xFF45 {
                             self.io[0x45] = val;
 
-                            if val == self.io[0x44] {
-                                self.io[0x41] = self.io[0x41] | 0b0000_0100;
-                            } else {
-                                self.io[0x41] = self.io[0x41] & 0b1111_1011;
+                            // update lyc stat flag only if the ppu is ON
+                            if self.io[0x40] >> 7 != 0 {
+                                if val == self.io[0x44] {
+                                    self.io[0x41] = self.io[0x41] | 0b0000_0100;
+                                } else {
+                                    self.io[0x41] = self.io[0x41] & 0b1111_1011;
+                                }
                             }
                         }
 
