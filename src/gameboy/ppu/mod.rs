@@ -1,4 +1,4 @@
-use std::{cell::{RefCell}, cmp::Ordering, collections::VecDeque, rc::Rc};
+use std::{borrow::Borrow, cell::{RefCell}, cmp::Ordering, collections::VecDeque, rc::Rc};
 use self::{bg_fetcher::{FetchMode, BgFetcher}, sprite_fetcher::SpriteFetcher};
 
 use super::{interupt::InterruptFlag, mmu::Mmu};
@@ -290,6 +290,13 @@ impl Ppu {
                     (self.mmu).borrow_mut().interupts.request_interupt(InterruptFlag::VBlank);
                     self.set_mode_lcdc(PpuMode::VBlank);
                     self.check_ly_eq_lyc();
+
+                    // IF STAT OAM BIT IS SET, STAT INTR FIRES ON LINE 144 AT VBLANK???
+                    // WAT
+                    let mut mmu = (*self.mmu).borrow_mut();
+                    if mmu.io[0x44] == 144 && mmu.io[0x41] & 0b0010_0000 != 0 {
+                        mmu.interupts.request_interupt(InterruptFlag::Stat);
+                    }
                 }
 
                 let scan_line = self.get_scan_line();
