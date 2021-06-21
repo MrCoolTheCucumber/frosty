@@ -94,7 +94,6 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
     - [x] stat_irq_blocking
     - [x] stat_lyc_onoff
     - [x] vblank_stat_intr-GS
-
 - [ ] serial
     - [ ] boot_sclk_align 
 - [x] Timer
