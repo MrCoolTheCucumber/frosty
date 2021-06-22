@@ -108,21 +108,6 @@ impl Mmu {
 
         // set up zero page mem
         mmu.write_byte(0xFF02, 0x7E);
-        // mmu.write_byte(0xFF10, 0x80);
-        // mmu.write_byte(0xFF11, 0xBF);
-        // mmu.write_byte(0xFF12, 0xF3);
-        // mmu.write_byte(0xFF14, 0xBF);
-        // mmu.write_byte(0xFF16, 0x3F);
-        // mmu.write_byte(0xFF19, 0xBF);
-        // mmu.write_byte(0xFF1A, 0x7A);
-        // mmu.write_byte(0xFF1B, 0xFF);
-        // mmu.write_byte(0xFF1C, 0x9F);
-        // mmu.write_byte(0xFF1E, 0xBF);
-        // mmu.write_byte(0xFF20, 0xFF);
-        // mmu.write_byte(0xFF23, 0xBF);
-        // mmu.write_byte(0xFF24, 0x77);
-        // mmu.write_byte(0xFF25, 0xF3);
-        // mmu.write_byte(0xFF26, 0xF1);
 
         mmu
     }
