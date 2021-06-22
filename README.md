@@ -29,7 +29,7 @@ Frosty is a GameBoy emulator written in rust.
 | LEFT   | <kbd>A</kbd>  |
 | RIGHT  | <kbd>D</kbd>  |
 
-You can also press <kbd>TAB</kbd> to enable turbo, which will disable the frame limiter.
+You can also hold <kbd>TAB</kbd> to enable turbo, which will disable the frame limiter.
 
 ## Tests
 All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 ppu test!
