@@ -78,3 +78,6 @@ ei_timings: when ei happens, if IE & IF != 0 already then it takes 4 clock cycle
 - Implement oam dma as a completely separate thing that ticks over time
 - https://stackoverflow.com/questions/17514598/building-a-cross-platform-application-using-rust
 - https://stackoverflow.com/questions/29763647/how-to-make-a-program-that-does-not-display-the-console-window
+
+# Testing
+- mealybug roms should have their screenshot taken when the ld d, d "breakpoint" is hit

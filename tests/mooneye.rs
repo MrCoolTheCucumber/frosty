@@ -33,7 +33,6 @@ macro_rules! mooneye_test {
 
                 let fb = s.get_frame_buffer();
 
-                // create file in expected
                 let bin_file_path = format!("./tests/expected/mooneye/acceptance/{}.png", &path);
                 let comparison = compare_image_rgb8(fb, bin_file_path);
                 assert!(comparison);
@@ -86,8 +85,8 @@ mooneye_test! {
     lcdon_timing: "ppu/lcdon_timing-GS.gb",
     // lcdon_write_timing: "ppu/lcdon_write_timing-GS.gb",
     stat_irq_blocking: "ppu/stat_irq_blocking.gb",
-    // stat_lyc_onoff: "ppu/stat_lyc_onoff.gb",
-    // vblank_stat_intr: "ppu/vblank_stat_intr-GS.gb",
+    stat_lyc_onoff: "ppu/stat_lyc_onoff.gb",
+    vblank_stat_intr: "ppu/vblank_stat_intr-GS.gb",
     push_timing: "push_timing.gb",
     rapid_di_ei: "rapid_di_ei.gb",
     reti_intr_timing: "reti_intr_timing.gb",
