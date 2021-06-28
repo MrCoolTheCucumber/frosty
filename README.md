@@ -152,6 +152,7 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - Improve ppu timings
 - Re-implement sound. Current sound is ok, but its missing a lot of the required quirks.
 - Implement all cartridge types. Currently ROM and MBC1/3/5  (which is a lot to be fair)
+- Anything to do with the Seril I/O port
 
 ## References Used
 - https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
