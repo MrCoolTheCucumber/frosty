@@ -4,6 +4,10 @@ use super::{cpu::{Cpu, disassembler::{Instruction, InstructionStep}}};
 
 // https://eldred.fr/gb-asm-tutorial/interrupts.html
 
+// TODO:
+// Everything in this class should use some sort of state machine
+// "handling" interrupts is not instant. Every read should take 4-t cycles for example!
+
 pub struct Interupt {
     pub master: u8,
     pub enable: u8,
