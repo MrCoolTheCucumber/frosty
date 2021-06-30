@@ -137,11 +137,11 @@ impl Interupt {
         let mut steps: VecDeque<InstructionStep> = VecDeque::new();
 
         // NOP 1
-        let step = Box::new(|cpu: &mut Cpu| { });
+        let step = Box::new(|_cpu: &mut Cpu| { });
         steps.push_back(InstructionStep::Standard(step));
 
         // NOP 2
-        let step = Box::new(|cpu: &mut Cpu| { });
+        let step = Box::new(|_cpu: &mut Cpu| { });
         steps.push_back(InstructionStep::Standard(step));
 
         // push pc higher byte
