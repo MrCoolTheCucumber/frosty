@@ -17,6 +17,7 @@ pub struct Interupt {
     pub halt_interupt_pending: bool
 }
 
+#[derive(Clone, Copy)]
 pub enum InterruptFlag {
     VBlank = 0b00000001,
     Stat   = 0b00000010,
@@ -60,9 +61,9 @@ impl Interupt {
         self.master > 0
     }
 
-    pub fn get_interupt_state(&self) -> Option<InterruptFlag> {
-        if self.enable > 0 && self.flags > 0 {
-            let interupt: u8 = self.enable & self.flags & 0x1F;
+    pub fn get_interupt_state(&self, interupt_enable_flags: u8) -> Option<InterruptFlag> {
+        if (interupt_enable_flags > 0) && self.flags > 0 {
+            let interupt: u8 = interupt_enable_flags & self.flags & 0x1F;
 
             if interupt & InterruptFlag::VBlank as u8 > 0 {
                 return Some(InterruptFlag::VBlank);
@@ -102,25 +103,26 @@ impl Interupt {
 
     pub fn handle(interrupt: &mut Interupt, cpu: &mut Cpu) {
         if interrupt.is_master_enabled() && !cpu.is_processing_instruction() {
-            let interrupt_flag = match interrupt.get_interupt_state() {
+            let _interrupt_flag = match interrupt.get_interupt_state(interrupt.enable) {
                 Some(flag) => flag,
                 None => return
             };
             
-            let interrupt_addr: u16 = match interrupt_flag {
-                InterruptFlag::VBlank => 0x40,
-                InterruptFlag::Stat => 0x48,
-                InterruptFlag::Timer => 0x50,
-                InterruptFlag::Serial => 0x58,
-                InterruptFlag::Joypad => 0x60
-            };
-
-            interrupt.clear_interupt(interrupt_flag);
             interrupt.disable_master();
 
-            let interrupt_instr = Self::create_interupt_instruction(interrupt_addr);
+            let interrupt_instr = Self::create_interupt_instruction();
             cpu.set_interrupt_instruction(interrupt_instr);
             cpu.halted = false; // TODO un-halting here should take an extra 4t cycles (see TCAGBD 4.9)
+        }
+    }
+
+    fn get_interupt_vector(flag: InterruptFlag) -> u16 {
+        match flag {
+            InterruptFlag::VBlank => 0x40,
+            InterruptFlag::Stat => 0x48,
+            InterruptFlag::Timer => 0x50,
+            InterruptFlag::Serial => 0x58,
+            InterruptFlag::Joypad => 0x60
         }
     }
 
@@ -133,27 +135,47 @@ impl Interupt {
     // 8t: current PC pushed to stack
     // 4t: PC set to the interupt handler adress
 
-    fn create_interupt_instruction(addr: u16) -> Instruction {
+    fn create_interupt_instruction() -> Instruction {
         let mut steps: VecDeque<InstructionStep> = VecDeque::new();
 
         // NOP 1
-        let step = Box::new(|_cpu: &mut Cpu| { });
+        let step = Box::new(|cpu: &mut Cpu| { });
         steps.push_back(InstructionStep::Standard(step));
 
         // NOP 2
-        let step = Box::new(|_cpu: &mut Cpu| { });
+        let step = Box::new(|cpu: &mut Cpu| { });
         steps.push_back(InstructionStep::Standard(step));
 
-        // NOP 3 (fake nop)
-        let step = Box::new(|_cpu: &mut Cpu| { });
+        // push pc higher byte
+        // latch interrupt enable flags?
+        let step = Box::new(|cpu: &mut Cpu| {
+            cpu.write_byte_to_stack((cpu.pc >> 8) as u8);
+            cpu.temp_val8 = cpu.mmu.borrow().interupts.enable;
+        });
         steps.push_back(InstructionStep::Standard(step));
 
-        // Push PC to stack
-        let step = Box::new(|cpu: &mut Cpu| { cpu.push_pc_to_stack(); });
+        // push pc lower byte
+        let step = Box::new(|cpu: &mut Cpu| {
+            cpu.write_byte_to_stack((cpu.pc & 0x00FF) as u8);
+        });
         steps.push_back(InstructionStep::Standard(step));
 
         // Set new PC
-        let step = Box::new(move |cpu: &mut Cpu| { cpu.set_pc(addr); });
+        let step = Box::new(move |cpu: &mut Cpu| {
+            let address: u16;
+            {
+                let mut mmu = cpu.mmu.borrow_mut();
+                address = match mmu.interupts.get_interupt_state(cpu.temp_val8) {
+                    Some(flag) => {
+                        mmu.interupts.clear_interupt(flag);
+                        Self::get_interupt_vector(flag)
+                    },
+                    None => 0,
+                };
+            }
+
+            cpu.set_pc(address);
+        });
         steps.push_back(InstructionStep::Standard(step));
 
         Instruction {

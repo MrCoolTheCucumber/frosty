@@ -14,7 +14,7 @@ enum Flag {
 }
 
 pub struct Cpu {
-    mmu: Rc<RefCell<Mmu>>,
+    pub mmu: Rc<RefCell<Mmu>>,
 
     a: u8,
     b: u8,
@@ -25,12 +25,12 @@ pub struct Cpu {
     h: u8,
     l: u8,
 
-    pc: u16,
-    sp: u16,
+    pub pc: u16,
+    pub sp: u16,
 
     operand8: u8,
     operand16: u16,
-    temp_val8: u8,
+    pub temp_val8: u8,
     temp_val_16: u16,
 
     instruction: Option<Instruction>,
@@ -445,7 +445,7 @@ impl Cpu {
         (*self.mmu).borrow_mut().write_word(self.sp, val);
     }
 
-    fn write_byte_to_stack(&mut self, val: u8) {
+    pub(super) fn write_byte_to_stack(&mut self, val: u8) {
         self.sp = self.sp.wrapping_sub(1);
         (*self.mmu).borrow_mut().write_byte(self.sp, val);
     }
