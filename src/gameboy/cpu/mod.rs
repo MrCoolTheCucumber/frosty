@@ -31,7 +31,7 @@ pub struct Cpu {
     operand8: u8,
     operand16: u16,
     pub temp_val8: u8,
-    temp_val_16: u16,
+    pub temp_val_16: u16,
 
     instruction: Option<Instruction>,
     machine_cycles_taken_for_current_step: u8,

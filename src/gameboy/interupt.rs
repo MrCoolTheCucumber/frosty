@@ -4,10 +4,6 @@ use super::{cpu::{Cpu, disassembler::{Instruction, InstructionStep}}};
 
 // https://eldred.fr/gb-asm-tutorial/interrupts.html
 
-// TODO:
-// Everything in this class should use some sort of state machine
-// "handling" interrupts is not instant. Every read should take 4-t cycles for example!
-
 pub struct Interupt {
     pub master: u8,
     pub enable: u8,
@@ -61,9 +57,13 @@ impl Interupt {
         self.master > 0
     }
 
-    pub fn get_interupt_state(&self, interupt_enable_flags: u8) -> Option<InterruptFlag> {
-        if (interupt_enable_flags > 0) && self.flags > 0 {
-            let interupt: u8 = interupt_enable_flags & self.flags & 0x1F;
+    pub fn get_interupt_state(&self) -> Option<InterruptFlag> {
+        self.get_interupt_state_latched(self.enable, self.flags)
+    }
+
+    pub fn get_interupt_state_latched(&self, interupt_enable_flags: u8, interupt_req_flags: u8) -> Option<InterruptFlag> {
+        if (interupt_enable_flags > 0) && interupt_req_flags > 0 {
+            let interupt: u8 = interupt_enable_flags & interupt_req_flags & 0x1F;
 
             if interupt & InterruptFlag::VBlank as u8 > 0 {
                 return Some(InterruptFlag::VBlank);
@@ -103,13 +103,11 @@ impl Interupt {
 
     pub fn handle(interrupt: &mut Interupt, cpu: &mut Cpu) {
         if interrupt.is_master_enabled() && !cpu.is_processing_instruction() {
-            let _interrupt_flag = match interrupt.get_interupt_state(interrupt.enable) {
+            let _interrupt_flag = match interrupt.get_interupt_state() {
                 Some(flag) => flag,
                 None => return
             };
             
-            interrupt.disable_master();
-
             let interrupt_instr = Self::create_interupt_instruction();
             cpu.set_interrupt_instruction(interrupt_instr);
             cpu.halted = false; // TODO un-halting here should take an extra 4t cycles (see TCAGBD 4.9)
@@ -155,8 +153,11 @@ impl Interupt {
         steps.push_back(InstructionStep::Standard(step));
 
         // push pc lower byte
+        // latch interrupt (request) flags?
         let step = Box::new(|cpu: &mut Cpu| {
+            let itr_if = cpu.mmu.borrow().interupts.flags;
             cpu.write_byte_to_stack((cpu.pc & 0x00FF) as u8);
+            cpu.temp_val_16 = itr_if as u16;
         });
         steps.push_back(InstructionStep::Standard(step));
 
@@ -165,13 +166,20 @@ impl Interupt {
             let address: u16;
             {
                 let mut mmu = cpu.mmu.borrow_mut();
-                address = match mmu.interupts.get_interupt_state(cpu.temp_val8) {
+                let itr_state = mmu.interupts.get_interupt_state_latched(
+                    cpu.temp_val8,
+                    cpu.temp_val_16 as u8
+                );
+
+                address = match itr_state {
                     Some(flag) => {
                         mmu.interupts.clear_interupt(flag);
                         Self::get_interupt_vector(flag)
                     },
                     None => 0,
                 };
+
+                mmu.interupts.disable_master();
             }
 
             cpu.set_pc(address);
