@@ -102,7 +102,7 @@ impl Interupt {
     }
 
     pub fn handle(interrupt: &mut Interupt, cpu: &mut Cpu) {
-        if interrupt.is_master_enabled() && !cpu.is_processing_instruction() {
+        if interrupt.is_master_enabled() && (!cpu.is_processing_instruction() || cpu.is_fetching) {
             let _interrupt_flag = match interrupt.get_interupt_state() {
                 Some(flag) => flag,
                 None => return

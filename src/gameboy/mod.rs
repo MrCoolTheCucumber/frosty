@@ -78,6 +78,11 @@ impl GameBoy {
     pub fn tick(&mut self) -> bool {
         if self.cpu.stopped { return true }
 
+        {
+            let mut mmu = (*self.mmu).borrow_mut();
+            Interupt::handle(&mut mmu.interupts, &mut self.cpu);
+        }
+
         self.cpu.tick();
         self.ppu.tick();
         
@@ -89,8 +94,6 @@ impl GameBoy {
         if request_timer_interupt {
             mmu.interupts.request_interupt(InterruptFlag::Timer)
         }
-
-        Interupt::handle(&mut mmu.interupts, &mut self.cpu);
 
         self.cpu.stopped
     }

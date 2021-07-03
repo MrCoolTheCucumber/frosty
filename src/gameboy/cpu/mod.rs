@@ -33,6 +33,7 @@ pub struct Cpu {
     pub temp_val8: u8,
     pub temp_val_16: u16,
 
+    pub is_fetching: bool,
     instruction: Option<Instruction>,
     machine_cycles_taken_for_current_step: u8,
 
@@ -41,6 +42,7 @@ pub struct Cpu {
     pub halted_waiting_for_interupt_pending: bool,
     halt_bug: bool,
     ei_delay: bool,
+    ei_delay_cycles: u8,
 
     debug: bool,
     pub start_log: bool,
@@ -86,6 +88,7 @@ impl Cpu {
             temp_val8: 0,
             temp_val_16: 0,
 
+            is_fetching: false,
             instruction: None,
             machine_cycles_taken_for_current_step: 0,
 
@@ -94,6 +97,7 @@ impl Cpu {
             halted_waiting_for_interupt_pending: false,
             halt_bug: false,
             ei_delay: false,
+            ei_delay_cycles: 0,
 
             debug: true,
             start_log: false,
@@ -106,7 +110,12 @@ impl Cpu {
     }
 
     pub fn set_interrupt_instruction(&mut self, instruction: Instruction) {
+        if self.instruction.is_some() {
+            // undo the fetch?
+            self.pc -= 1;
+        }
         self.instruction = Some(instruction);
+        self.is_fetching = false;
     }
 
     // FLAG FUNCS
@@ -487,7 +496,17 @@ impl Cpu {
             }
         }
 
+        if self.ei_delay {
+            self.ei_delay_cycles -= 1;
+
+            if self.ei_delay_cycles == 0 {
+                (*self.mmu).borrow_mut().interupts.enable_master();   
+                self.ei_delay = false;
+            }
+        }
+
         if self.instruction.is_none() {
+            self.is_fetching = true;
             let opcode = self.fetch();
             
             {
@@ -506,11 +525,6 @@ impl Cpu {
                 0xCB => disassemble_cb_prefix_op(self.fetch()),
                 _ => disassemble(opcode)
             };
-
-            if self.ei_delay {
-                self.ei_delay = false;
-                (*self.mmu).borrow_mut().interupts.enable_master();
-            }
 
             if self.start_log {
                 if self.log.is_none() {
@@ -553,6 +567,7 @@ impl Cpu {
             return;
         }
 
+        self.is_fetching = false;
         self.machine_cycles_taken_for_current_step = 0;
 
         let step;
