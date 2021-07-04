@@ -75,8 +75,8 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
     - [ ] unused_hwio
 - [x] Instr
     - [x] daa
-- [ ] Interrupts
-    - [ ] ie_push
+- [x] Interrupts
+    - [x] ie_push
 - [ ] oam dma
     - [x] basic
     - [x] reg_read
