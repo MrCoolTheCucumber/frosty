@@ -1061,8 +1061,9 @@ fn dissassemble_x_3(y: u8, z: u8, p: u8, q: u8, opcode: u8) -> Instruction {
 
                 7 => {
                     let instruction_step = InstructionStep::Instant(Box::new(|cpu: &mut Cpu| {
-                        if !(*cpu.mmu).borrow_mut().interupts.is_master_enabled() {
+                        if !(*cpu.mmu).borrow_mut().interupts.is_master_enabled() && !cpu.ei_delay {
                             cpu.ei_delay = true;
+                            cpu.ei_delay_cycles = 4;
                         }
                     }));
                     steps.push_back(instruction_step);
