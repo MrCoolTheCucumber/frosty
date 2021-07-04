@@ -52,7 +52,7 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - [x] instr_timing
 - [x] mem_timing
 - [x] mem_timing-2
-- [ ] halt_bug
+- [x] halt_bug
 
 ### Hacktix scribbltests
 - [x] fairylake

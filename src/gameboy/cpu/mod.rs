@@ -480,6 +480,15 @@ impl Cpu {
     // CYCLE FUNCTIONS
 
     pub fn tick(&mut self) {
+        if self.ei_delay {
+            self.ei_delay_cycles -= 1;
+
+            if self.ei_delay_cycles == 0 {
+                (*self.mmu).borrow_mut().interupts.enable_master();   
+                self.ei_delay = false;
+            }
+        }
+
         if self.halted { 
             if self.halted_waiting_for_interupt_pending {
                 let mut mmu = (*self.mmu).borrow_mut();
@@ -493,15 +502,6 @@ impl Cpu {
             } 
             else {
                 return
-            }
-        }
-
-        if self.ei_delay {
-            self.ei_delay_cycles -= 1;
-
-            if self.ei_delay_cycles == 0 {
-                (*self.mmu).borrow_mut().interupts.enable_master();   
-                self.ei_delay = false;
             }
         }
 

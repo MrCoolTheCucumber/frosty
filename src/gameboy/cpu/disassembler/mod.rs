@@ -602,7 +602,7 @@ fn dissassemble_x_1(y: u8, z: u8, _p: u8, _q: u8, opcode: u8) -> Instruction {
                 cpu.halted = true;
             } 
             else {
-                if mmu.interupts.enable & mmu.interupts.flags != 0 {
+                if mmu.interupts.enable & mmu.interupts.flags & 0x1F != 0 {
                     // IME not set, interupt pending
                     // continue execution, but the next byte is read twice
                     // or in other words, after the next byte is read the pc gets
