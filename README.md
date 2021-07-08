@@ -1,4 +1,5 @@
-# Frosty
+![logo](https://user-images.githubusercontent.com/16002713/124995525-6b23c580-e03f-11eb-92d3-030ba5ca14ba.png)
+--------
 
 [![Build and Test](https://github.com/RubenG123/frosty/actions/workflows/Build%20and%20Test.yml/badge.svg)](https://github.com/RubenG123/frosty/actions/workflows/Build%20and%20Test.yml)
 
