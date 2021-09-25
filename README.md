@@ -165,3 +165,4 @@ All Blargg cpu_instrs and instr_timing tests passing, as well as the dmg-acid2 p
 - https://robertovaccari.com/blog/2020_09_26_gameboy/
 - http://www.devrs.com/gb/files/faqs.html
 - The kind people of the EmuDev discord
+- And much more...
