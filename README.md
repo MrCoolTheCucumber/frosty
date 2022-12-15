@@ -1,3 +1,5 @@
+#### Archiving this project as I am now working on a gameboy color emulator with more features: [PartyBoy](https://github.com/MrCoolTheCucumber/partyboy)
+
 ![logo](https://user-images.githubusercontent.com/16002713/124996265-8e9b4000-e040-11eb-94b4-8fd2bd80ef48.png)
 --------
 
